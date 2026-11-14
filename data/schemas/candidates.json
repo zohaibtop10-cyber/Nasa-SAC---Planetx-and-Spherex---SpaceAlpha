@@ -25,9 +25,16 @@
         ],
         "additionalProperties": false,
         "properties": {
-          "id": { "type": "string", "pattern": "^[a-zA-Z0-9_-]+$" },
-          "field_id": { "type": "string" },
-          "release_batch": { "type": "string" },
+          "id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_-]+$"
+          },
+          "field_id": {
+            "type": "string"
+          },
+          "release_batch": {
+            "type": "string"
+          },
           "positions": {
             "type": "array",
             "minItems": 2,
@@ -45,12 +52,36 @@
           },
           "verdict": {
             "type": "string",
-            "enum": ["artifact", "known_object", "high_motion_star", "unknown"]
+            "enum": [
+              "artifact",
+              "known_object",
+              "known_asteroid",
+              "high_motion_star",
+              "fast_moving_star",
+              "unknown"
+            ]
           },
           "reason_chain": {
             "type": "array",
             "minItems": 1,
-            "items": { "type": "string", "minLength": 1 }
+            "items": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "object",
+                  "required": ["rule", "passed", "detail"],
+                  "additionalProperties": true,
+                  "properties": {
+                    "rule": { "type": "string" },
+                    "passed": { "type": "boolean" },
+                    "detail": { "type": "string" }
+                  }
+                }
+              ]
+            }
           },
           "confidence": {
             "type": "number",
@@ -63,6 +94,7 @@
             "properties": {
               "catalog": { "type": "string" },
               "designation": { "type": "string" },
+              "body_type": { "type": "string" },
               "separation_arcsec": { "type": "number", "minimum": 0.0 }
             }
           },
@@ -94,6 +126,12 @@
           },
           "simulated": {
             "type": "boolean"
+          },
+          "velocity_arcsec_day": {
+            "type": "number"
+          },
+          "estimated_size_km": {
+            "type": "number"
           },
           "labels": {
             "type": "object",

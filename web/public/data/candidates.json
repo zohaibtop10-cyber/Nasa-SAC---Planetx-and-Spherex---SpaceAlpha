@@ -24,7 +24,7 @@
         "NO_MATCH: No cataloged counterpart in NASA JPL Small-Body Ident (< 5.0\")",
         "NO_MATCH: No stellar counterpart in ESA Gaia DR3 (< 5.0\")",
         "PARALLAX: Computed distance bracket [17.2, 22.2] AU based on 0.0050 AU baseline",
-        "TRIAGE: Assigned verdict 'unknown' (no claim of discovering Planet X)"
+        "TRIAGE: Assigned verdict 'unknown' (no unverified planetary claim)"
       ],
       "confidence": 0.88,
       "match": null,
@@ -82,7 +82,7 @@
       "reason_chain": [
         "DETECTED: Astrometric point source in 2 SPHEREx survey epochs",
         "MATCH: Correlated with NASA JPL SBDB body '1 Ceres' within 5.0\"",
-        "TRIAGE: Assigned verdict 'known_object' (no claim of new discovery)"
+        "TRIAGE: Assigned verdict 'known_object' (confirmed solar system body)"
       ],
       "confidence": 0.98,
       "match": {
@@ -176,7 +176,7 @@
       "reason_chain": [
         "DETECTED: Astrometric point source in 2 SPHEREx survey epochs",
         "MATCH: Correlated with NASA JPL SBDB body 'Comet 3I/ATLAS' within 5.0\"",
-        "TRIAGE: Assigned verdict 'known_object' (no claim of new discovery)"
+        "TRIAGE: Assigned verdict 'known_object' (confirmed solar system body)"
       ],
       "confidence": 0.98,
       "match": {

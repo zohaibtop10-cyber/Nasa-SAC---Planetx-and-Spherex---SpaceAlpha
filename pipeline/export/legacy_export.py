@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 # Ensure pipeline root is in sys.path
-PIPELINE_ROOT = Path(__file__).resolve().parent.parent
+PIPELINE_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(PIPELINE_ROOT) not in sys.path:
     sys.path.insert(0, str(PIPELINE_ROOT))
 

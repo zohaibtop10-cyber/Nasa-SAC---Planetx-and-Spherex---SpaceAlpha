@@ -16,7 +16,14 @@ class ContractValidationError(Exception):
 
 
 ALLOWED_LABELS: Set[str] = {"measured", "derived", "assumed"}
-ALLOWED_VERDICTS: Set[str] = {"artifact", "known_object", "high_motion_star", "unknown"}
+ALLOWED_VERDICTS: Set[str] = {
+    "artifact",
+    "known_object",
+    "known_asteroid",
+    "high_motion_star",
+    "fast_moving_star",
+    "unknown",
+}
 
 
 def get_schema_dir() -> Path:

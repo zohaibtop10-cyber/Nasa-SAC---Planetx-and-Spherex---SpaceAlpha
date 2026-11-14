@@ -5,7 +5,21 @@
 
 export type LabelType = 'measured' | 'derived' | 'assumed';
 
-export type Verdict = 'artifact' | 'known_object' | 'high_motion_star' | 'unknown';
+export type Verdict =
+  | 'artifact'
+  | 'known_object'
+  | 'known_asteroid'
+  | 'high_motion_star'
+  | 'fast_moving_star'
+  | 'unknown';
+
+export interface ReasonStep {
+  rule: string;
+  passed: boolean;
+  detail: string;
+}
+
+export type ReasonItem = string | ReasonStep;
 
 export interface Position {
   time: string;
@@ -40,7 +54,7 @@ export interface Candidate {
   release_batch: string;
   positions: Position[];
   verdict: Verdict;
-  reason_chain: string[];
+  reason_chain: ReasonItem[];
   confidence: number;
   match: MatchDetails | null;
   distance_range: DistanceRange | null;

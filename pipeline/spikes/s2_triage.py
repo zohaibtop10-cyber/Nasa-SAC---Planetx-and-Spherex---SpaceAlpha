@@ -195,7 +195,7 @@ def run_triage(output_path: Path = DEFAULT_OUTPUT_JSON) -> Dict[str, Any]:
             }
             reason_chain.append("DETECTED: Astrometric point source in 2 SPHEREx survey epochs")
             reason_chain.append(f"MATCH: Correlated with NASA JPL SBDB body '{matched_name}' within 5.0\"")
-            reason_chain.append("TRIAGE: Assigned verdict 'known_object' (no claim of new discovery)")
+            reason_chain.append("TRIAGE: Assigned verdict 'known_object' (confirmed solar system body)")
         else:
             verdict = "unknown"
             confidence = 0.88

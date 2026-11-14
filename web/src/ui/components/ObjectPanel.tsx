@@ -304,7 +304,10 @@ export const ObjectPanel: React.FC<ObjectPanelProps> = ({
     }
     // Fallback: derive structured facts from reason chain or sentences
     if (candidateInfo?.reason_chain && candidateInfo.reason_chain.length > 0) {
-      const filtered = candidateInfo.reason_chain.filter(
+      const stringified = candidateInfo.reason_chain.map((r: any) =>
+        typeof r === 'string' ? r : (r.detail || `${r.rule}: ${r.passed ? 'PASSED' : 'FAILED'}`)
+      );
+      const filtered = stringified.filter(
         (r) => !r.startsWith('EXPLORED:') && !r.startsWith('CLASSIFICATION:') && !r.startsWith('COORDINATES:') && !r.startsWith('PROCEDURAL 3D:')
       );
       if (filtered.length > 0) return filtered;
