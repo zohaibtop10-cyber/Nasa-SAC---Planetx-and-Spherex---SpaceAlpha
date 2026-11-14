@@ -447,18 +447,24 @@ export const ObjectPage: React.FC<ObjectPageProps> = ({
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {candidate.reason_chain.map((step, idx) => {
-              const lower = step.toLowerCase();
+              const text = typeof step === 'string' ? step : `${step.rule}: ${step.detail}`;
+              const isPassed = typeof step === 'object' && step !== null ? step.passed : undefined;
+              const lower = text.toLowerCase();
               const isPositive =
-                lower.includes('match') ||
-                lower.includes('detected') ||
-                lower.includes('pass') ||
-                lower.includes('confirmed') ||
-                lower.includes('bracket');
+                isPassed !== undefined
+                  ? isPassed
+                  : lower.includes('match') ||
+                    lower.includes('detected') ||
+                    lower.includes('pass') ||
+                    lower.includes('confirmed') ||
+                    lower.includes('bracket');
               const isNegative =
-                lower.includes('no_match') ||
-                lower.includes('unmatched') ||
-                lower.includes('reject') ||
-                lower.includes('fail');
+                isPassed !== undefined
+                  ? !isPassed
+                  : lower.includes('no_match') ||
+                    lower.includes('unmatched') ||
+                    lower.includes('reject') ||
+                    lower.includes('fail');
 
               const icon = isPositive && !isNegative ? '✓' : '✗';
               const iconColor = isPositive && !isNegative ? '#10B981' : '#EF4444';
@@ -491,7 +497,7 @@ export const ObjectPage: React.FC<ObjectPageProps> = ({
                   >
                     {icon}
                   </span>
-                  <span style={{ color: '#EDEDED' }}>{step}</span>
+                  <span style={{ color: '#EDEDED' }}>{text}</span>
                 </div>
               );
             })}
