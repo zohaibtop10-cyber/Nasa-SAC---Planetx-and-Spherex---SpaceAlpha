@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ConfigSchema",
+  "description": "Schema for pipeline configuration file.",
+  "type": "object",
+  "required": ["detect", "link", "known", "stars", "parallax", "labels"],
+  "additionalProperties": false,
+  "properties": {
+    "detect": {
+      "type": "object",
+      "required": ["sigma"],
+      "additionalProperties": false,
+      "properties": {
+        "sigma": { "type": "number", "exclusiveMinimum": 0.0 }
+      }
+    },
+    "link": {
+      "type": "object",
+      "required": ["max_rate_arcsec_per_day", "min_detections"],
+      "additionalProperties": false,
+      "properties": {
+        "max_rate_arcsec_per_day": { "type": "number", "exclusiveMinimum": 0.0 },
+        "min_detections": { "type": "integer", "minimum": 2 }
+      }
+    },
+    "known": {
+      "type": "object",
+      "required": ["tolerance_arcsec"],
+      "additionalProperties": false,
+      "properties": {
+        "tolerance_arcsec": { "type": "number", "exclusiveMinimum": 0.0 }
+      }
+    },
+    "stars": {
+      "type": "object",
+      "required": ["tolerance_arcsec"],
+      "additionalProperties": false,
+      "properties": {
+        "tolerance_arcsec": { "type": "number", "exclusiveMinimum": 0.0 }
+      }
+    },
+    "parallax": {
+      "type": "object",
+      "required": ["d_min_au", "d_max_au", "d_step"],
+      "additionalProperties": false,
+      "properties": {
+        "d_min_au": { "type": "number", "exclusiveMinimum": 0.0 },
+        "d_max_au": { "type": "number", "exclusiveMinimum": 0.0 },
+        "d_step": { "type": "number", "exclusiveMinimum": 0.0 }
+      }
+    },
+    "labels": {
+      "type": "array",
+      "minItems": 3,
+      "items": { "type": "string" },
+      "contains": { "const": "measured" }
+    }
+  }
+}

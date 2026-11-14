@@ -1,0 +1,96 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CandidatesSchema",
+  "description": "Schema for detected mover candidates with triage verdicts and provenance labels.",
+  "type": "object",
+  "required": ["candidates"],
+  "additionalProperties": false,
+  "properties": {
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "field_id",
+          "release_batch",
+          "positions",
+          "verdict",
+          "reason_chain",
+          "confidence",
+          "match",
+          "distance_range",
+          "colour_index",
+          "labels"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-zA-Z0-9_-]+$" },
+          "field_id": { "type": "string" },
+          "release_batch": { "type": "string" },
+          "positions": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "type": "object",
+              "required": ["time", "ra", "dec", "err"],
+              "additionalProperties": false,
+              "properties": {
+                "time": { "type": "string" },
+                "ra": { "type": "number", "minimum": 0.0, "maximum": 360.0 },
+                "dec": { "type": "number", "minimum": -90.0, "maximum": 90.0 },
+                "err": { "type": "number", "minimum": 0.0 }
+              }
+            }
+          },
+          "verdict": {
+            "type": "string",
+            "enum": ["artifact", "known_object", "high_motion_star", "unknown"]
+          },
+          "reason_chain": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0
+          },
+          "match": {
+            "type": ["object", "null"],
+            "additionalProperties": true,
+            "properties": {
+              "catalog": { "type": "string" },
+              "designation": { "type": "string" },
+              "separation_arcsec": { "type": "number", "minimum": 0.0 }
+            }
+          },
+          "distance_range": {
+            "type": ["object", "null"],
+            "required": ["min_au", "max_au", "assumption"],
+            "additionalProperties": false,
+            "properties": {
+              "min_au": { "type": "number", "exclusiveMinimum": 0.0 },
+              "max_au": { "type": "number", "exclusiveMinimum": 0.0 },
+              "assumption": { "type": "string", "minLength": 1 }
+            }
+          },
+          "colour_index": {
+            "type": ["number", "null"]
+          },
+          "simulated": {
+            "type": "boolean"
+          },
+          "labels": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "enum": ["measured", "derived", "assumed"]
+            }
+          }
+        }
+      }
+    }
+  }
+}

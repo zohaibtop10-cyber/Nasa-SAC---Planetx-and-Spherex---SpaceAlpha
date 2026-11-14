@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ReleasesSchema",
+  "description": "Schema for weekly pipeline processing releases.",
+  "type": "object",
+  "required": ["releases"],
+  "additionalProperties": false,
+  "properties": {
+    "releases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "release_batch",
+          "published_at",
+          "pipeline_version",
+          "fields_processed",
+          "candidate_counts",
+          "labels"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "release_batch": { "type": "string" },
+          "published_at": { "type": "string" },
+          "pipeline_version": { "type": "string" },
+          "fields_processed": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "candidate_counts": {
+            "type": "object",
+            "required": ["total", "known_object", "high_motion_star", "artifact", "unknown"],
+            "additionalProperties": false,
+            "properties": {
+              "total": { "type": "integer", "minimum": 0 },
+              "known_object": { "type": "integer", "minimum": 0 },
+              "high_motion_star": { "type": "integer", "minimum": 0 },
+              "artifact": { "type": "integer", "minimum": 0 },
+              "unknown": { "type": "integer", "minimum": 0 }
+            }
+          },
+          "notes": { "type": "string" },
+          "labels": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "enum": ["measured", "derived", "assumed"]
+            }
+          }
+        }
+      }
+    }
+  }
+}
