@@ -9,9 +9,14 @@
 """
 
 from pathlib import Path
+import sys
 import json
 import numpy as np
-import pytest
+
+# Ensure root workspace is in sys.path
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from pipeline.config import load_config
 from pipeline.fetch import inspect_fits_extensions, mask_flagged_pixels
@@ -219,3 +224,27 @@ def test_process_field_pipeline_end_to_end(tmp_path):
         assert "labels" in cand
         for key, ep in cand["labels"].items():
             assert ep in ["measured", "derived", "assumed"]
+
+
+if __name__ == "__main__":
+    import tempfile
+    print("Running production module test suite...")
+    test_config_loader()
+    print("✓ test_config_loader passed")
+    test_fits_masking_and_detection()
+    print("✓ test_fits_masking_and_detection passed")
+    test_stationary_star_rejection()
+    print("✓ test_stationary_star_rejection passed")
+    test_track_linking_real_and_synthetic()
+    print("✓ test_track_linking_real_and_synthetic passed")
+    test_triage_four_tiers()
+    print("✓ test_triage_four_tiers passed")
+    test_parallax_distance_range()
+    print("✓ test_parallax_distance_range passed")
+    test_schema_validation_real_data()
+    print("✓ test_schema_validation_real_data passed")
+    
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        test_process_field_pipeline_end_to_end(Path(tmp_dir))
+    print("✓ test_process_field_pipeline_end_to_end passed")
+    print("ALL PRODUCTION MODULE TESTS PASSED CLEANLY!")

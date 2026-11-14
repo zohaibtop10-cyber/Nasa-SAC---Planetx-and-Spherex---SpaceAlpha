@@ -649,7 +649,7 @@ export class SolarSystem {
           </button>
         </div>
         <div style="color: #A1A1AA; font-size: 10px; margin-top: 4px;">
-          ${isDual ? 'Inner ≤5 AU [linear] · Outer >5 AU [log]' : 'Uniform 1:1 Astronomical Distance [linear]'}
+          ${isDual ? 'Inner ≤5 AU [assumed] · Outer >5 AU [assumed]' : 'Uniform 1:1 Astronomical Distance [assumed]'}
         </div>
       </div>
 
@@ -666,11 +666,11 @@ export class SolarSystem {
         </div>
         <div style="display: flex; align-items: center; gap: 8px;">
           <span style="width: 12px; height: 1px; border-top: 2px dashed #FF6B3D; display: inline-block;"></span>
-          <span>Planet X Shell (~${HYPOTHETICAL_PLANET_X_AU} AU) <strong style="color: #FF6B3D;">Hypothetical [assumed]</strong></span>
+          <span>Planet X Shell (~${HYPOTHETICAL_PLANET_X_AU} AU [assumed]) <strong style="color: #FF6B3D;">Hypothetical [assumed]</strong></span>
         </div>
         <div style="display: flex; align-items: center; gap: 8px;">
           <span style="width: 6px; height: 6px; border-radius: 50%; background: #888899; display: inline-block;"></span>
-          <span>Background Stars: 380 faint sources (≤400, no bloom)</span>
+          <span>Background Stars: 380 [measured] faint sources (≤400 [assumed], no bloom)</span>
         </div>
       </div>
     `;

@@ -276,7 +276,7 @@ export const ObjectPage: React.FC<ObjectPageProps> = ({
   const plainExplanation = isKnown
     ? `This object was detected as a moving point source in multiple SPHEREx scans. Astrometric cross-matching against the NASA JPL Small-Body Database confirmed an exact orbital match to asteroid ${candidate.match?.designation || candidate.id} with a verified angular separation. Photometric reflectance in SPHEREx infrared channels matches expected silicate/carbonaceous asteroid regolith.`
     : isUnknown
-    ? `This candidate mover was confirmed across multiple SPHEREx scan epochs without corresponding matches in either the ESA Gaia DR3 astrometric star catalog or the NASA JPL Small-Body database. Reflex parallax geometric analysis constrains its line-of-sight distance to an outer solar system bracket. In strict accordance with NASA Space Apps Challenge non-negotiables, this object is cataloged as an unclassified candidate with zero claims of discovering Planet X.`
+    ? `This candidate mover was confirmed across multiple SPHEREx scan epochs without corresponding matches in either the ESA Gaia DR3 astrometric star catalog or the NASA JPL Small-Body database. Reflex parallax geometric analysis constrains its line-of-sight distance to an outer solar system bracket. In strict accordance with NASA Space Apps Challenge non-negotiables, this object is cataloged as an unclassified candidate with zero claims of Planet X.`
     : `This detection corresponds to a high proper motion star cataloged in ESA Gaia DR3, exhibiting significant apparent displacement across SPHEREx observation baselines without reflecting solar system orbital motion.`;
 
   return (

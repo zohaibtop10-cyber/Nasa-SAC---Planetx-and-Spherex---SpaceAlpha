@@ -231,8 +231,11 @@ def triage_candidate(
         "positions.err": "derived",
     }
     if distance_range:
+        labels["distance_range"] = "derived"
         labels["distance_min_au"] = "derived"
         labels["distance_max_au"] = "derived"
+        labels["distance_range.min_au"] = "derived"
+        labels["distance_range.max_au"] = "derived"
     if match_details and "separation_arcsec" in match_details:
         labels["match.separation_arcsec"] = "derived"
 

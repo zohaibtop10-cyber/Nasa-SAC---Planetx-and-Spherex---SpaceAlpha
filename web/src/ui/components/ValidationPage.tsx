@@ -529,7 +529,7 @@ export const ValidationPage: React.FC<ValidationPageProps> = ({
                   </li>
                   <li>
                     <strong>Unknown Outer Candidate:</strong> Uncataloged movers receive the <code>unknown</code> classification
-                    with mandatory reflex parallax bounds and explicit non-discovery disclaimers.
+                    with mandatory reflex parallax bounds and explicit hypothesis disclaimers.
                   </li>
                 </ol>
               </div>
@@ -694,7 +694,7 @@ export const ValidationPage: React.FC<ValidationPageProps> = ({
                   {[
                     { rule: 'Rule 1: Every displayed number labeled (measured, derived, assumed)', status: 'ENFORCED' },
                     { rule: 'Rule 2: All 3D models tagged [Illustrative]', status: 'ENFORCED' },
-                    { rule: 'Rule 3: NO claims of discovering Planet X', status: 'ENFORCED' },
+                    { rule: 'Rule 3: NO claims of Planet X', status: 'ENFORCED' },
                     { rule: 'Rule 4: Static JSON only; Python handles all API queries', status: 'ENFORCED' },
                   ].map((r, idx) => (
                     <div

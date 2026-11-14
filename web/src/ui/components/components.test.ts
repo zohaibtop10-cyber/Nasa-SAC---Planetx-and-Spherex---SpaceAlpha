@@ -199,10 +199,10 @@ async function runComponentTests() {
     citation: 'Batygin & Brown (2016, 2021)',
     nature: 'Theoretical dynamical clustering hypothesis of extreme TNOs',
     label: 'assumed',
-    discoveryClaimAllowed: false,
+    planetClaimAllowed: false,
   };
   assert.equal(planetXHypothesisCitation.label, 'assumed');
-  assert.equal(planetXHypothesisCitation.discoveryClaimAllowed, false, 'Zero discovery claims permitted');
+  assert.equal(planetXHypothesisCitation.planetClaimAllowed, false, 'No planet claims permitted');
 
   console.log('All UI component tests passed successfully!');
 }

@@ -11,7 +11,7 @@ enforcing all non-negotiable rules:
 2. Non-empty reason chains.
 3. Positions has at least 2 observation epochs.
 4. Distance range strictly present ONLY for 'unknown' verdicts.
-5. NO claims of discovering Planet X.
+5. NO claims of Planet X.
 """
 
 from __future__ import annotations

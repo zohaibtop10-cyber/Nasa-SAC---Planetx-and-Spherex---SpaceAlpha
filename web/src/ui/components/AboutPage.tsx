@@ -6,7 +6,7 @@
  * - Data sources & formal credits: NASA/IPAC IRSA, NASA JPL, and ESA Gaia
  * - Observational limits and line-of-sight distance ambiguities
  * - The Planet X zone explicitly cited as a theoretical hypothesis (Batygin & Brown 2016/2021)
- * - Zero discovery claims policy
+ * - Strict zero planet claims policy
  * - Strict epistemic number labeling (measured, derived, assumed)
  */
 
@@ -357,9 +357,9 @@ export const AboutPage: React.FC<AboutPageProps> = ({ onBackToFeed }) => {
             }}
           >
             <div style={{ color: '#FF6B3D', fontWeight: 700, marginBottom: '6px' }}>
-              NON-NEGOTIABLE RULE 3: ZERO DISCOVERY CLAIMS
+              NON-NEGOTIABLE RULE 3: ZERO PLANET CLAIMS
             </div>
-            Live Sky makes <strong>NO claim</strong> of discovering &quot;Planet X&quot; or &quot;Planet Nine&quot;.
+            Live Sky makes <strong>NO claim</strong> of &quot;Planet X&quot; or &quot;Planet Nine&quot;.
             Any 3D orbital shell or region representing this zone is explicitly designated as a <em>theoretical hypothesis</em>,
             and any detected transient in this distance regime is classified strictly as an <code>unknown</code> candidate
             pending multi-epoch orbital verification.

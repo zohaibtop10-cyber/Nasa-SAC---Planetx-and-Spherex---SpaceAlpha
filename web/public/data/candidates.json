@@ -56,7 +56,10 @@
         "positions.dec": "measured",
         "positions.err": "derived",
         "distance_min_au": "derived",
-        "distance_max_au": "derived"
+        "distance_max_au": "derived",
+        "distance_range": "derived",
+        "distance_range.min_au": "derived",
+        "distance_range.max_au": "derived"
       }
     },
     {
@@ -99,7 +102,9 @@
         "positions.ra": "measured",
         "positions.dec": "measured",
         "positions.err": "derived",
-        "match.separation_arcsec": "derived"
+        "match.separation_arcsec": "derived",
+        "positions": "measured",
+        "separation_arcsec": "derived"
       }
     },
     {
@@ -142,7 +147,9 @@
         "positions.ra": "measured",
         "positions.dec": "measured",
         "positions.err": "derived",
-        "match.separation_arcsec": "derived"
+        "match.separation_arcsec": "derived",
+        "positions": "measured",
+        "separation_arcsec": "derived"
       }
     },
     {
@@ -185,7 +192,9 @@
         "positions.ra": "measured",
         "positions.dec": "measured",
         "positions.err": "derived",
-        "match.separation_arcsec": "derived"
+        "match.separation_arcsec": "derived",
+        "positions": "measured",
+        "separation_arcsec": "derived"
       }
     },
     {
@@ -228,7 +237,9 @@
         "positions.ra": "measured",
         "positions.dec": "measured",
         "positions.err": "derived",
-        "match.separation_arcsec": "derived"
+        "match.separation_arcsec": "derived",
+        "positions": "measured",
+        "separation_arcsec": "derived"
       }
     },
     {
@@ -308,7 +319,11 @@
         "distance_max_au": "derived",
         "positions.ra": "measured",
         "positions.dec": "measured",
-        "positions.err": "derived"
+        "positions.err": "derived",
+        "positions": "measured",
+        "distance_range": "derived",
+        "distance_range.min_au": "derived",
+        "distance_range.max_au": "derived"
       }
     },
     {
@@ -351,7 +366,9 @@
         "positions.ra": "measured",
         "positions.dec": "measured",
         "positions.err": "derived",
-        "match.separation_arcsec": "derived"
+        "match.separation_arcsec": "derived",
+        "positions": "measured",
+        "separation_arcsec": "derived"
       }
     },
     {
@@ -394,7 +411,9 @@
         "positions.ra": "measured",
         "positions.dec": "measured",
         "positions.err": "derived",
-        "match.separation_arcsec": "derived"
+        "match.separation_arcsec": "derived",
+        "positions": "measured",
+        "separation_arcsec": "derived"
       }
     }
   ]
