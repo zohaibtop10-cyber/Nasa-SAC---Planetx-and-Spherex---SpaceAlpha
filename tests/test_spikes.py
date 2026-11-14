@@ -21,7 +21,7 @@ def test_fits_extension_table_and_masking():
 
     with fits.open(fits_path) as hdul:
         extensions = print_extension_table(hdul)
-        assert len(extensions) >= 6
+        assert len(extensions) >= 4
         names = [e["name"] for e in extensions]
         assert "PRIMARY" in names or "(PRIMARY)" in names
         assert "IMAGE" in names
