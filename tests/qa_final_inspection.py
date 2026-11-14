@@ -119,6 +119,7 @@ def check_3d_models_illustrative():
         WEB_SRC / "scene" / "ProceduralGenerator.tsx",
         WEB_SRC / "scene" / "SolarSystem.tsx",
         WEB_SRC / "scene" / "SolarSystemEngine.ts",
+        WEB_SRC / "scene" / "SolarSystemMap.tsx",
         WEB_SRC / "scene" / "SolarSystemScene.tsx",
         WEB_SRC / "ui" / "components" / "ObjectPage.tsx",
     ]

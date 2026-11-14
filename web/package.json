@@ -7,11 +7,13 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "tsx src/data/data.test.ts && tsx src/scene/models/models.test.ts && tsx src/scene/ProceduralGenerator.test.ts && tsx src/ui/components/components.test.ts && tsx src/api/fetchNasaObjectWorkflow.test.ts && tsx src/api/exploreObjectWorkflow.test.ts"
+    "test": "tsx src/data/data.test.ts && tsx src/scene/models/models.test.ts && tsx src/scene/ProceduralGenerator.test.ts && tsx src/scene/SolarSystemMap.test.ts && tsx src/ui/components/components.test.ts && tsx src/api/fetchNasaObjectWorkflow.test.ts && tsx src/api/exploreObjectWorkflow.test.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@types/gsap": "^1.20.2",
     "framer-motion": "^14.14.0",
+    "gsap": "^3.15.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "three": "^0.170.0",
