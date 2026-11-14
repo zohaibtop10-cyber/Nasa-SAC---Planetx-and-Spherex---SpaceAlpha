@@ -5,8 +5,8 @@ interface HeaderProps {
   fields: Field[];
   selectedFieldId: string;
   onSelectField: (fieldId: string) => void;
-  activeTab: '3d' | 'blink' | 'validation';
-  onChangeTab: (tab: '3d' | 'blink' | 'validation') => void;
+  activeTab: '3d' | 'blink' | 'validation' | 'gallery';
+  onChangeTab: (tab: '3d' | 'blink' | 'validation' | 'gallery') => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -135,6 +135,23 @@ export const Header: React.FC<HeaderProps> = ({
           }}
         >
           Compliance &amp; Audit
+        </button>
+
+        <button
+          onClick={() => onChangeTab('gallery')}
+          style={{
+            fontFamily: 'monospace',
+            fontSize: '12px',
+            color: activeTab === 'gallery' ? 'var(--color-text-1)' : '#71717A',
+            backgroundColor: activeTab === 'gallery' ? 'var(--color-surface)' : 'transparent',
+            border: activeTab === 'gallery' ? '1px solid var(--color-accent)' : '1px solid transparent',
+            padding: '6px 14px',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          Model Gallery
         </button>
       </nav>
 

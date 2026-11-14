@@ -7,13 +7,14 @@ import { ObjectSidePanel } from './ui/components/ObjectSidePanel';
 import { SkyBlinkViewer } from './ui/components/SkyBlinkViewer';
 import { TimeBar } from './ui/components/TimeBar';
 import { ValidationTab } from './ui/components/ValidationTab';
+import { ModelGallery } from './ui/components/ModelGallery';
 
 export const App: React.FC = () => {
   const [fields, setFields] = useState<Field[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [selectedFieldId, setSelectedFieldId] = useState<string>('field_asteroid_belt');
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'3d' | 'blink' | 'validation'>('3d');
+  const [activeTab, setActiveTab] = useState<'3d' | 'blink' | 'validation' | 'gallery'>('3d');
   const [timeEpochRatio, setTimeEpochRatio] = useState<number>(0.0);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -149,6 +150,8 @@ export const App: React.FC = () => {
         )}
 
         {activeTab === 'validation' && <ValidationTab candidates={candidates} />}
+
+        {activeTab === 'gallery' && <ModelGallery candidates={candidates} />}
       </div>
     </div>
   );
