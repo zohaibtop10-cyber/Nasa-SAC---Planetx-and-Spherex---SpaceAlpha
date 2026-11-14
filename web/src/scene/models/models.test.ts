@@ -12,6 +12,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { AsteroidModel } from './Asteroid';
 import { UnknownSegmentModel } from './UnknownSegment';
+import { BackgroundStars } from '../BackgroundStars';
 
 // Minimal mock for DOM document if running under pure Node
 if (typeof document === 'undefined') {
@@ -143,11 +144,56 @@ async function runModelTests() {
   assert.strictEqual(segment.isIllustrated(), true);
   assert.strictEqual(segment.tagElement.style.display, 'inline-flex');
 
+  // 3. Background Stars Tests
+  console.log('  3. Testing BackgroundStars component...');
+  const cosmos = new BackgroundStars({ count: 50000, minRadius: 2600, maxRadius: 5200 });
+
+  assert.ok(cosmos.points instanceof THREE.Points, 'Must be an instance of THREE.Points');
+  assert.strictEqual(cosmos.count, 50000, 'Must generate exactly 50,000 stars');
+  assert.strictEqual(cosmos.points.userData.tag, 'Illustrative', 'Must be tagged Illustrative');
+  assert.strictEqual(cosmos.points.userData.drawCalls, 1, 'Must render in a single draw call');
+
+  // Verify geometry buffer attributes
+  const cosmosPosAttr = cosmos.geometry.getAttribute('position');
+  const cosmosColorAttr = cosmos.geometry.getAttribute('aColor');
+  const cosmosSizeAttr = cosmos.geometry.getAttribute('aSize');
+
+  assert.ok(cosmosPosAttr, 'Position attribute must exist');
+  assert.strictEqual(cosmosPosAttr.count, 50000, 'Must have 50,000 position vertices');
+  assert.strictEqual(cosmosPosAttr.itemSize, 3, 'Position must have itemSize 3');
+
+  assert.ok(cosmosColorAttr, 'Color attribute must exist');
+  assert.strictEqual(cosmosColorAttr.count, 50000, 'Must have 50,000 color vertices');
+  assert.strictEqual(cosmosColorAttr.itemSize, 3, 'Color must have itemSize 3');
+
+  assert.ok(cosmosSizeAttr, 'Size attribute must exist');
+  assert.strictEqual(cosmosSizeAttr.count, 50000, 'Must have 50,000 sizes');
+
+  // Verify radius bounds far beyond Kuiper belt (2600 to 5200)
+  for (let i = 0; i < 100; i++) {
+    const x = cosmosPosAttr.getX(i);
+    const y = cosmosPosAttr.getY(i);
+    const z = cosmosPosAttr.getZ(i);
+    const r = Math.sqrt(x * x + y * y + z * z);
+    assert.ok(r >= 2590 && r <= 5210, `Star radius ${r} must be within bounds [2600, 5200]`);
+  }
+
+  // Verify procedural shader with no texture maps
+  assert.ok(cosmos.material instanceof THREE.ShaderMaterial, 'Must use THREE.ShaderMaterial');
+  assert.strictEqual(cosmos.material.transparent, true, 'Material must be transparent');
+  assert.strictEqual(cosmos.material.depthWrite, false, 'DepthWrite must be false for particle efficiency');
+
+  // Test update scintillation
+  const initialTime = cosmos.material.uniforms.uTime.value;
+  cosmos.update(0.16);
+  assert.ok(cosmos.material.uniforms.uTime.value > initialTime, 'uTime uniform must increment on update');
+
   // Cleanup
+  cosmos.dispose();
   asteroid.dispose();
   segment.dispose();
 
-  console.log('All illustrative model tests passed successfully!');
+  console.log('All illustrative model and cosmos tests passed successfully!');
 }
 
 runModelTests().catch((err) => {

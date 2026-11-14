@@ -17,6 +17,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Candidate } from '../data/types';
+import { BackgroundStars } from './BackgroundStars';
 import { colorIndexToAsteroidColor, createProceduralAsteroidGeometry } from './proceduralAsteroid';
 
 export type ScaleMode = 'dual' | 'linear';
@@ -62,7 +63,7 @@ export class SolarSystem {
 
   // Scene Objects
   private sunMesh!: THREE.Mesh;
-  private starPoints!: THREE.Points;
+  private backgroundCosmos!: BackgroundStars;
   private planetMeshes: Map<string, THREE.Mesh> = new Map();
   private orbitLines: Map<string, THREE.Line> = new Map();
   private spherexGroup!: THREE.Group;
@@ -110,7 +111,7 @@ export class SolarSystem {
     // 2. Camera setup
     const width = container.clientWidth || window.innerWidth;
     const height = container.clientHeight || window.innerHeight;
-    this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 4000);
+    this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 7500);
     this.camera.position.set(0, 110, 140);
 
     // 3. Renderer setup: No bloom, high performance, antialiased
@@ -198,33 +199,17 @@ export class SolarSystem {
   }
 
   /**
-   * Starfield capped at <= 400 faint stars with no bloom.
+   * Rich, GPU-optimized background cosmos (50,000 stars rendered in a single draw call).
    */
   private createStarfield(): void {
-    const starCount = 380; // Strictly <= 400 faint stars
-    const starGeo = new THREE.BufferGeometry();
-    const starPos = new Float32Array(starCount * 3);
-
-    for (let i = 0; i < starCount * 3; i += 3) {
-      const u = Math.random();
-      const v = Math.random();
-      const theta = u * 2.0 * Math.PI;
-      const phi = Math.acos(2.0 * v - 1.0);
-      const r = 1000 + Math.random() * 500;
-      starPos[i] = r * Math.sin(phi) * Math.cos(theta);
-      starPos[i + 1] = r * Math.sin(phi) * Math.sin(theta);
-      starPos[i + 2] = r * Math.cos(phi);
-    }
-
-    starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-    const starMat = new THREE.PointsMaterial({
-      color: 0x888899,
-      size: 1.1,
-      transparent: true,
-      opacity: 0.45,
+    this.backgroundCosmos = new BackgroundStars({
+      count: 50000,
+      minRadius: 2600.0,
+      maxRadius: 5200.0,
+      baseSize: 1.5,
+      illustrated: true,
     });
-    this.starPoints = new THREE.Points(starGeo, starMat);
-    this.scene.add(this.starPoints);
+    this.scene.add(this.backgroundCosmos.points);
   }
 
   /**
@@ -669,8 +654,8 @@ export class SolarSystem {
           <span>Planet X Shell (~${HYPOTHETICAL_PLANET_X_AU} AU [assumed]) <strong style="color: #FF6B3D;">Hypothetical [assumed]</strong></span>
         </div>
         <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="width: 6px; height: 6px; border-radius: 50%; background: #888899; display: inline-block;"></span>
-          <span>Background Stars: 380 [measured] faint sources (≤400 [assumed], no bloom)</span>
+          <span style="width: 6px; height: 6px; border-radius: 50%; background: #A0C2FF; display: inline-block;"></span>
+          <span>Background Cosmos: 50,000 [assumed] stars (1 draw call) <span style="color: #38BDF8;">[Illustrative]</span></span>
         </div>
       </div>
     `;
@@ -813,6 +798,11 @@ export class SolarSystem {
         mesh.rotation.x += delta * 0.2;
       });
 
+      // Update background cosmos procedural scintillation
+      if (this.backgroundCosmos) {
+        this.backgroundCosmos.update(delta);
+      }
+
       // FPS Measurement
       this.updateFpsMeasurement();
 
@@ -839,6 +829,10 @@ export class SolarSystem {
 
     this.controls.dispose();
     this.renderer.dispose();
+
+    if (this.backgroundCosmos) {
+      this.backgroundCosmos.dispose();
+    }
 
     if (this.legendElement && this.legendElement.parentElement) {
       this.legendElement.parentElement.removeChild(this.legendElement);
