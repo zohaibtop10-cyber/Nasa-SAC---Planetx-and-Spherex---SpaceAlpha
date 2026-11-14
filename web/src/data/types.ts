@@ -59,11 +59,14 @@ export interface TargetField {
   ra_deg: number;
   dec_deg: number;
   fov_deg: number;
+  candidate_count?: number;
   description?: string;
   target_type?: string;
   scans: Scan[];
   labels: Record<string, LabelType>;
 }
+
+export type Field = TargetField;
 
 export interface FieldsPayload {
   fields: TargetField[];
