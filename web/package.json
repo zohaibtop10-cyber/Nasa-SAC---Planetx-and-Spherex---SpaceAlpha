@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "tsx src/data/data.test.ts && tsx src/scene/models/models.test.ts"
+    "test": "tsx src/data/data.test.ts && tsx src/scene/models/models.test.ts && tsx src/ui/components/components.test.ts"
   },
   "dependencies": {
     "react": "^18.3.1",

@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { loadCandidates, loadFields } from './data';
 import { Candidate, Field } from './data/types';
 import { SolarSystemScene } from './scene/SolarSystemScene';
+import { FeedPanel } from './ui/components/FeedPanel';
 import { Header } from './ui/components/Header';
+import { ModelGallery } from './ui/components/ModelGallery';
+import { ObjectPage } from './ui/components/ObjectPage';
 import { ObjectSidePanel } from './ui/components/ObjectSidePanel';
 import { SkyBlinkViewer } from './ui/components/SkyBlinkViewer';
 import { TimeBar } from './ui/components/TimeBar';
 import { ValidationTab } from './ui/components/ValidationTab';
-import { ModelGallery } from './ui/components/ModelGallery';
 
 export const App: React.FC = () => {
   const [fields, setFields] = useState<Field[]>([]);
@@ -18,6 +20,30 @@ export const App: React.FC = () => {
   const [timeEpochRatio, setTimeEpochRatio] = useState<number>(0.0);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  // URL Hash Routing (#/object/<id>)
+  const [objectRouteId, setObjectRouteId] = useState<string | null>(() => {
+    const hash = window.location.hash;
+    if (hash.startsWith('#/object/')) {
+      return decodeURIComponent(hash.replace('#/object/', '').trim());
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      if (hash.startsWith('#/object/')) {
+        const id = decodeURIComponent(hash.replace('#/object/', '').trim());
+        setObjectRouteId(id);
+      } else {
+        setObjectRouteId(null);
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   useEffect(() => {
     async function initData() {
@@ -95,6 +121,41 @@ export const App: React.FC = () => {
     );
   }
 
+  // Object Page Route (#/object/<id>)
+  if (objectRouteId) {
+    return (
+      <div
+        style={{
+          width: '100vw',
+          height: '100vh',
+          backgroundColor: 'var(--color-bg)',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        <Header
+          fields={fields}
+          selectedFieldId={selectedFieldId}
+          onSelectField={setSelectedFieldId}
+          activeTab={activeTab}
+          onChangeTab={(tab) => {
+            window.location.hash = '#/';
+            setActiveTab(tab);
+          }}
+        />
+        <ObjectPage
+          candidateId={objectRouteId}
+          candidates={candidates}
+          onBack={() => {
+            window.location.hash = '#/';
+            setObjectRouteId(null);
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       style={{
@@ -116,29 +177,43 @@ export const App: React.FC = () => {
         onChangeTab={setActiveTab}
       />
 
-      {/* Main Content View Switcher */}
-      <div style={{ flex: 1, position: 'relative', width: '100%', height: '100%' }}>
+      {/* Main Content View */}
+      <div style={{ flex: 1, position: 'relative', width: '100%', height: 'calc(100vh - 56px)', marginTop: '56px' }}>
         {activeTab === '3d' && (
-          <>
-            <SolarSystemScene
+          <div style={{ display: 'flex', width: '100%', height: '100%', overflow: 'hidden' }}>
+            {/* 360 px Feed Panel with hairline border */}
+            <FeedPanel
               candidates={candidates}
               selectedCandidateId={selectedCandidateId}
               onSelectCandidate={(id) => setSelectedCandidateId(id)}
-              timeEpochRatio={timeEpochRatio}
+              onOpenObjectPage={(id) => {
+                setSelectedCandidateId(id);
+                window.location.hash = `#/object/${id}`;
+              }}
             />
 
-            {/* Object Telemetry Side Panel */}
-            <ObjectSidePanel
-              candidate={selectedCandidate}
-              onClose={() => setSelectedCandidateId(null)}
-            />
+            {/* Canvas fills the rest */}
+            <div style={{ flex: 1, position: 'relative', height: '100%', overflow: 'hidden' }}>
+              <SolarSystemScene
+                candidates={candidates}
+                selectedCandidateId={selectedCandidateId}
+                onSelectCandidate={(id) => setSelectedCandidateId(id)}
+                timeEpochRatio={timeEpochRatio}
+              />
 
-            {/* Bottom Parallax Time Scrubber Bar */}
-            <TimeBar
-              timeEpochRatio={timeEpochRatio}
-              onChangeTimeRatio={setTimeEpochRatio}
-            />
-          </>
+              {/* Object Telemetry Side Panel */}
+              <ObjectSidePanel
+                candidate={selectedCandidate}
+                onClose={() => setSelectedCandidateId(null)}
+              />
+
+              {/* Bottom Parallax Time Scrubber Bar */}
+              <TimeBar
+                timeEpochRatio={timeEpochRatio}
+                onChangeTimeRatio={setTimeEpochRatio}
+              />
+            </div>
+          </div>
         )}
 
         {activeTab === 'blink' && (

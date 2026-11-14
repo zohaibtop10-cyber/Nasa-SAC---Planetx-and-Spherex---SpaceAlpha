@@ -1,6 +1,16 @@
+/**
+ * ObjectSidePanel.tsx - Quick Telemetry Flyout
+ *
+ * Implements:
+ * - Direct NumberChip integration with solid/dashed/dotted epistemic borders
+ * - Strict adherence to labelFor
+ * - Link to dedicated Object Page (#/object/<id>)
+ */
+
 import React from 'react';
-import { Candidate } from '../../data/types';
 import { labelFor } from '../../data/labels';
+import { Candidate } from '../../data/types';
+import { NumberChip } from './NumberChip';
 
 interface ObjectSidePanelProps {
   candidate: Candidate | null;
@@ -25,6 +35,7 @@ export const ObjectSidePanel: React.FC<ObjectSidePanelProps> = ({ candidate, onC
 
   return (
     <aside
+      aria-label="Candidate Details"
       style={{
         position: 'absolute',
         top: '68px',
@@ -34,7 +45,7 @@ export const ObjectSidePanel: React.FC<ObjectSidePanelProps> = ({ candidate, onC
         backgroundColor: 'rgba(17, 17, 19, 0.94)',
         backdropFilter: 'blur(12px)',
         border: '1px solid var(--color-hairline)',
-        borderRadius: '0px', // Strict Studio requirement: 0 for panels
+        borderRadius: '0px',
         padding: '20px',
         display: 'flex',
         flexDirection: 'column',
@@ -126,9 +137,29 @@ export const ObjectSidePanel: React.FC<ObjectSidePanelProps> = ({ candidate, onC
         </button>
       </div>
 
+      {/* Button to navigate to Object Page */}
+      <a
+        href={`#/object/${candidate.id}`}
+        style={{
+          fontFamily: 'monospace',
+          fontSize: '11px',
+          color: 'var(--color-text-1)',
+          backgroundColor: 'var(--color-surface)',
+          border: '1px solid var(--color-hairline)',
+          padding: '8px 12px',
+          borderRadius: '6px',
+          textAlign: 'center',
+          textDecoration: 'none',
+          display: 'block',
+          fontWeight: 600,
+        }}
+      >
+        View on Pedestal (Object Page) →
+      </a>
+
       <div style={{ height: '1px', backgroundColor: 'var(--color-hairline)' }} />
 
-      {/* Telemetry Grid with Mandatory Labels */}
+      {/* Telemetry Grid with NumberChips */}
       <div>
         <h3
           style={{
@@ -152,22 +183,27 @@ export const ObjectSidePanel: React.FC<ObjectSidePanelProps> = ({ candidate, onC
             fontFamily: 'monospace',
           }}
         >
-          <div style={{ backgroundColor: 'var(--color-bg)', padding: '8px', border: '1px solid var(--color-hairline)' }}>
-            <div style={{ color: '#71717A', fontSize: '10px' }}>
-              CONFIDENCE <span style={{ color: '#38BDF8' }}>[{labelFor(candidate, 'confidence')}]</span>
-            </div>
-            <div style={{ color: 'var(--color-text-1)', fontSize: '13px', marginTop: '2px' }}>
-              {(candidate.confidence * 100).toFixed(1)}%
-            </div>
+          <div style={{ backgroundColor: 'var(--color-bg)', padding: '10px', border: '1px solid var(--color-hairline)' }}>
+            <div style={{ color: '#71717A', fontSize: '10px', marginBottom: '6px' }}>CONFIDENCE</div>
+            <NumberChip
+              value={candidate.confidence * 100}
+              unit="%"
+              label={labelFor(candidate, 'confidence')}
+              precision={1}
+            />
           </div>
 
-          <div style={{ backgroundColor: 'var(--color-bg)', padding: '8px', border: '1px solid var(--color-hairline)' }}>
-            <div style={{ color: '#71717A', fontSize: '10px' }}>
-              COLOUR INDEX <span style={{ color: '#38BDF8' }}>[{labelFor(candidate, 'colour_index')}]</span>
-            </div>
-            <div style={{ color: 'var(--color-text-1)', fontSize: '13px', marginTop: '2px' }}>
-              {candidate.colour_index !== null ? candidate.colour_index.toFixed(2) : 'N/A'}
-            </div>
+          <div style={{ backgroundColor: 'var(--color-bg)', padding: '10px', border: '1px solid var(--color-hairline)' }}>
+            <div style={{ color: '#71717A', fontSize: '10px', marginBottom: '6px' }}>COLOUR INDEX</div>
+            {candidate.colour_index !== null ? (
+              <NumberChip
+                value={candidate.colour_index}
+                label={labelFor(candidate, 'colour_index')}
+                precision={2}
+              />
+            ) : (
+              <span style={{ color: '#71717A', fontSize: '11px' }}>N/A</span>
+            )}
           </div>
         </div>
       </div>
@@ -181,27 +217,30 @@ export const ObjectSidePanel: React.FC<ObjectSidePanelProps> = ({ candidate, onC
             padding: '12px',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
             <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#FF6B3D', fontWeight: 600 }}>
               PARALLAX DISTANCE BOUNDS
             </span>
-            <span style={{ fontFamily: 'monospace', fontSize: '10px', color: '#38BDF8' }}>
-              [{labelFor(candidate, 'distance_min_au')}]
-            </span>
           </div>
 
-          <div
-            style={{
-              fontFamily: 'monospace',
-              fontSize: '16px',
-              color: 'var(--color-text-1)',
-              margin: '6px 0',
-            }}
-          >
-            {candidate.distance_range.min_au.toFixed(1)} – {candidate.distance_range.max_au.toFixed(1)} AU
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <NumberChip
+              prefix="Min"
+              value={candidate.distance_range.min_au}
+              unit="AU"
+              label={labelFor(candidate, 'distance_range.min_au')}
+              precision={1}
+            />
+            <NumberChip
+              prefix="Max"
+              value={candidate.distance_range.max_au}
+              unit="AU"
+              label={labelFor(candidate, 'distance_range.max_au')}
+              precision={1}
+            />
           </div>
 
-          <p style={{ fontFamily: 'monospace', fontSize: '10px', color: '#A1A1AA', margin: 0 }}>
+          <p style={{ fontFamily: 'monospace', fontSize: '10px', color: '#A1A1AA', margin: '8px 0 0 0' }}>
             Assumption: {candidate.distance_range.assumption}{' '}
             <span style={{ color: '#F59E0B' }}>[assumed]</span>
           </p>
@@ -223,10 +262,17 @@ export const ObjectSidePanel: React.FC<ObjectSidePanelProps> = ({ candidate, onC
           <div style={{ fontFamily: 'monospace', fontSize: '13px', color: 'var(--color-text-1)', margin: '4px 0' }}>
             {candidate.match.designation} ({candidate.match.catalog})
           </div>
-          <div style={{ fontFamily: 'monospace', fontSize: '11px', color: '#A1A1AA' }}>
-            Residual separation: {candidate.match.separation_arcsec !== undefined ? candidate.match.separation_arcsec.toFixed(2) : '0.00'}″{' '}
-            <span style={{ color: '#38BDF8' }}>[{labelFor(candidate, 'match.separation_arcsec')}]</span>
-          </div>
+          {candidate.match.separation_arcsec !== undefined && (
+            <div style={{ marginTop: '6px' }}>
+              <NumberChip
+                prefix="Separation"
+                value={candidate.match.separation_arcsec}
+                unit='"'
+                label={labelFor(candidate, 'match.separation_arcsec')}
+                precision={2}
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -252,55 +298,38 @@ export const ObjectSidePanel: React.FC<ObjectSidePanelProps> = ({ candidate, onC
               style={{
                 backgroundColor: 'var(--color-bg)',
                 border: '1px solid var(--color-hairline)',
-                padding: '6px 10px',
+                padding: '8px 10px',
                 fontFamily: 'monospace',
                 fontSize: '11px',
                 display: 'flex',
-                justifyContent: 'space-between',
+                flexDirection: 'column',
+                gap: '4px',
               }}
             >
-              <span style={{ color: '#A1A1AA' }}>Epoch {idx + 1}</span>
-              <span style={{ color: 'var(--color-text-1)' }}>
-                RA {pos.ra.toFixed(4)}° · Dec {pos.dec.toFixed(4)}°{' '}
-                <span style={{ color: '#38BDF8' }}>[{labelFor(candidate, 'positions.ra')}]</span>
-              </span>
+              <div style={{ color: '#71717A', fontSize: '10px' }}>
+                Scan {idx + 1} · {pos.time}
+              </div>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                <NumberChip
+                  prefix="RA"
+                  value={pos.ra}
+                  unit="°"
+                  label={labelFor(candidate, 'positions')}
+                  compact
+                  precision={4}
+                />
+                <NumberChip
+                  prefix="Dec"
+                  value={pos.dec}
+                  unit="°"
+                  label={labelFor(candidate, 'positions')}
+                  compact
+                  precision={4}
+                />
+              </div>
             </div>
           ))}
         </div>
-      </div>
-
-      {/* Reason Chain (Audit Trail) */}
-      <div>
-        <h3
-          style={{
-            fontFamily: 'monospace',
-            fontSize: '11px',
-            letterSpacing: '0.5px',
-            color: '#71717A',
-            margin: '0 0 8px 0',
-            textTransform: 'uppercase',
-          }}
-        >
-          Classification Reason Chain
-        </h3>
-
-        <ol
-          style={{
-            margin: 0,
-            paddingLeft: '18px',
-            fontFamily: 'monospace',
-            fontSize: '11px',
-            lineHeight: '1.5',
-            color: '#D4D4D8',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '6px',
-          }}
-        >
-          {candidate.reason_chain.map((step, idx) => (
-            <li key={idx}>{step}</li>
-          ))}
-        </ol>
       </div>
     </aside>
   );
