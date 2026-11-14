@@ -84,9 +84,10 @@ def test_mover_linking_and_velocity_accuracy():
     sources_ep2 = extract_sources_from_image(data_ep2, wcs_ep2, t2, mjd2)
 
     unmatched1, unmatched2, _ = filter_stationary_sources(sources_ep1, sources_ep2, tolerance_arcsec=1.5)
-    movers = link_moving_detections(unmatched1, unmatched2, field_id="TEST-01")
+    movers, false_tracks, false_track_count = link_moving_detections(unmatched1, unmatched2, field_id="TEST-01")
 
     assert len(movers) == 1
+    assert false_track_count >= 0
     m = movers[0]
     assert m.field_id == "TEST-01"
     assert m.candidate_id == "CAND-TEST-01-001"
@@ -104,9 +105,10 @@ def test_mover_linking_and_velocity_accuracy():
 
 def test_s4_end_to_end_synthetic_run():
     """Verify end-to-end execution of run_s4_spike in synthetic mode."""
-    res = run_s4_spike(fits_path_ep1=None, delta_t_hours=2.5, field_id="SYN-01")
+    res = run_s4_spike(fits_path_ep1=None, delta_t_hours=2.5, field_id="SYN-01", force_synthetic=True)
     assert res["status"] == "success"
     assert res["num_movers"] == 1
+    assert res["false_track_count"] >= 1
     assert res["num_stationary_stars"] >= 20
     mover = res["movers"][0]
     assert "labels" in mover
@@ -122,4 +124,5 @@ def test_s4_end_to_end_real_fits_if_available():
     res = run_s4_spike(fits_path_ep1=fits_path, delta_t_hours=4.0, field_id="SPX-REAL-01")
     assert res["status"] == "success"
     assert res["num_movers"] >= 1
+    assert res["false_track_count"] >= 0
     assert res["num_stationary_stars"] > 50
