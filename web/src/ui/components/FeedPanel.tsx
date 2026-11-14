@@ -35,9 +35,18 @@ export const FeedPanel: React.FC<FeedPanelProps> = ({
   const filteredCandidates = candidates.filter((c) => {
     if (filterVerdict !== 'all' && c.verdict !== filterVerdict) return false;
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
+      const q = searchQuery.toLowerCase().trim();
+      // Check if query is coordinates "ra, dec" e.g. "133.8, -7.2"
+      const coordMatch = q.match(/^([+-]?\d+(?:\.\d+)?)[,\s]+([+-]?\d+(?:\.\d+)?)$/);
+      if (coordMatch && c.positions?.[0]) {
+        const qRa = parseFloat(coordMatch[1]);
+        const qDec = parseFloat(coordMatch[2]);
+        const dRa = Math.abs(c.positions[0].ra - qRa);
+        const dDec = Math.abs(c.positions[0].dec - qDec);
+        return dRa < 20.0 && dDec < 20.0;
+      }
       const matchName = c.match?.designation?.toLowerCase() || '';
-      return c.id.toLowerCase().includes(q) || matchName.includes(q);
+      return c.id.toLowerCase().includes(q) || matchName.includes(q) || c.field_id.toLowerCase().includes(q);
     }
     return true;
   });
@@ -124,10 +133,10 @@ export const FeedPanel: React.FC<FeedPanelProps> = ({
           <span style={{ fontSize: '10px', color: '#71717A' }}>Live QR2 Stream</span>
         </div>
 
-        {/* Search input */}
+        {/* Search input with coordinate and benchmark support */}
         <input
           type="text"
-          placeholder="Filter by ID or designation..."
+          placeholder="Search target, ID, or RA, Dec (e.g. 133.8, -7.2)..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           style={{
@@ -143,6 +152,35 @@ export const FeedPanel: React.FC<FeedPanelProps> = ({
             boxSizing: 'border-box',
           }}
         />
+
+        {/* Challenge Benchmarks Quick Pills */}
+        <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '2px' }}>
+          {[
+            { label: 'Barnard', query: "Barnard's Star" },
+            { label: 'WISE 0855', query: 'WISE' },
+            { label: 'Eps Indi', query: 'Epsilon Indi' },
+            { label: 'RW Aur', query: 'RW Aurigae' },
+            { label: 'R Dra', query: 'R Draconis' },
+          ].map((bm) => (
+            <button
+              key={bm.label}
+              onClick={() => setSearchQuery(searchQuery === bm.query ? '' : bm.query)}
+              style={{
+                fontFamily: 'monospace',
+                fontSize: '10px',
+                padding: '2px 6px',
+                backgroundColor: searchQuery === bm.query ? 'rgba(56, 189, 248, 0.2)' : 'var(--color-bg)',
+                border: searchQuery === bm.query ? '1px solid #38BDF8' : '1px solid var(--color-hairline)',
+                color: searchQuery === bm.query ? '#38BDF8' : '#71717A',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {bm.label}
+            </button>
+          ))}
+        </div>
 
         {/* Verdict category pills */}
         <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '2px' }}>

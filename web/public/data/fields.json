@@ -181,6 +181,84 @@
         "dec_deg": "measured",
         "fov_deg": "measured"
       }
+    },
+    {
+      "id": "field_eps_indi",
+      "name": "Epsilon Indi B (Brown Dwarf Binary)",
+      "ra_deg": 330.8404,
+      "dec_deg": -56.7861,
+      "fov_deg": 3.5,
+      "description": "SPHEREx sub-stellar benchmark field tracking cold brown dwarf binary system Epsilon Indi Ba/Bb.",
+      "target_type": "brown_dwarf_binary",
+      "scans": [
+        {
+          "scan_id": "spx_scan_2026_0120",
+          "epoch_utc": "2026-01-20T04:00:00Z",
+          "mjd": 61060.16667
+        },
+        {
+          "scan_id": "spx_scan_2026_0720",
+          "epoch_utc": "2026-07-20T04:00:00Z",
+          "mjd": 61241.16667
+        }
+      ],
+      "labels": {
+        "ra_deg": "measured",
+        "dec_deg": "measured",
+        "fov_deg": "measured"
+      }
+    },
+    {
+      "id": "field_rw_aur",
+      "name": "RW Aurigae (Variable T Tauri Star)",
+      "ra_deg": 76.9563,
+      "dec_deg": 30.4014,
+      "fov_deg": 3.5,
+      "description": "SPHEREx time-domain benchmark observing high-amplitude circumstellar dust accretion variations.",
+      "target_type": "variable_star",
+      "scans": [
+        {
+          "scan_id": "spx_scan_2026_0215",
+          "epoch_utc": "2026-02-15T10:00:00Z",
+          "mjd": 61086.41667
+        },
+        {
+          "scan_id": "spx_scan_2026_0815",
+          "epoch_utc": "2026-08-15T10:00:00Z",
+          "mjd": 61267.41667
+        }
+      ],
+      "labels": {
+        "ra_deg": "measured",
+        "dec_deg": "measured",
+        "fov_deg": "measured"
+      }
+    },
+    {
+      "id": "field_r_dra",
+      "name": "R Draconis (Pulsating Mira Variable)",
+      "ra_deg": 248.1672,
+      "dec_deg": 66.7551,
+      "fov_deg": 3.5,
+      "description": "SPHEREx spectrophotometric benchmark monitoring 245-day Mira pulsating red giant flux variations.",
+      "target_type": "variable_star",
+      "scans": [
+        {
+          "scan_id": "spx_scan_2026_0301",
+          "epoch_utc": "2026-03-01T12:00:00Z",
+          "mjd": 61100.5
+        },
+        {
+          "scan_id": "spx_scan_2026_0901",
+          "epoch_utc": "2026-09-01T12:00:00Z",
+          "mjd": 61284.5
+        }
+      ],
+      "labels": {
+        "ra_deg": "measured",
+        "dec_deg": "measured",
+        "fov_deg": "measured"
+      }
     }
   ]
 }
