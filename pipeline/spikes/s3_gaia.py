@@ -171,10 +171,30 @@ def match_gaia_star(
     tap_cone_radius_arcsec = search_radius_arcsec + motion_buffer_arcsec
     radius_qty = tap_cone_radius_arcsec * u.arcsec
 
-    # Silence Gaia noisy tap notifications for clean CLI output
-    job = Gaia.cone_search_async(coord, radius=radius_qty, verbose=False)
-    results = job.get_results()
-    elapsed_ms = (time.perf_counter() - t0) * 1000.0
+    # 2. Network Query via Gaia TAP
+    try:
+        # Silence Gaia noisy tap notifications for clean CLI output
+        job = Gaia.cone_search_async(coord, radius=radius_qty, verbose=False)
+        results = job.get_results()
+        elapsed_ms = (time.perf_counter() - t0) * 1000.0
+    except Exception as exc:
+        print(f"  [ESA Gaia TAP] Server error or timeout: {exc}", file=sys.stderr)
+        # Cache fallback to avoid hanging future runs on flaky TAP server
+        cache_payload = {
+            "cached_at": time.time(),
+            "query_params": cache_params,
+            "stars_in_cone": 0,
+            "match": None,
+            "status": "server_error_fallback",
+        }
+        with open(cache_file, "w", encoding="utf-8") as f:
+            json.dump(cache_payload, f, indent=2)
+        return None, {
+            "source": "esa_gaia_network_error",
+            "error": str(exc),
+            "latency_ms": (time.perf_counter() - t0) * 1000.0,
+            "stars_in_cone": 0,
+        }
 
     stars_in_cone = len(results)
 

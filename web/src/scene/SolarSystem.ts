@@ -541,7 +541,7 @@ export class SolarSystem {
         }
         nominalDistanceAu = (currentMin + currentMax) / 2.0;
 
-        // Line-of-sight distance uncertainty segment
+        // Line-of-sight distance uncertainty segment with ghost spheres at min/max points
         const pMin = this.radecToCartesian(ra, dec, currentMin);
         const pMax = this.radecToCartesian(ra, dec, currentMax);
 
@@ -552,8 +552,33 @@ export class SolarSystem {
           opacity: isSelected ? 0.95 : 0.65,
         });
         const segLine = new THREE.Line(segGeo, segMat);
+        segLine.userData = { tag: 'Illustrative', type: 'distanceRangeLine' };
         this.candidatesGroup.add(segLine);
         this.uncertaintySegments.set(cand.id, segLine);
+
+        // Ghost spheres positioned at the minimum and maximum distance bounds [d_min, d_max]
+        const ghostGeo = new THREE.SphereGeometry(0.7, 16, 16);
+        const ghostMat = new THREE.MeshStandardMaterial({
+          color: 0xff6b3d,
+          transparent: true,
+          opacity: 0.35,
+          roughness: 0.9,
+          metalness: 0.05,
+          wireframe: false,
+          depthWrite: false,
+        });
+
+        const minGhost = new THREE.Mesh(ghostGeo, ghostMat);
+        minGhost.position.copy(pMin);
+        minGhost.userData = { bound: 'min', tag: 'Illustrative', candidateId: cand.id };
+        this.candidatesGroup.add(minGhost);
+        this.uncertaintySegments.set(`${cand.id}-ghost-min`, minGhost as unknown as THREE.Line);
+
+        const maxGhost = new THREE.Mesh(ghostGeo, ghostMat);
+        maxGhost.position.copy(pMax);
+        maxGhost.userData = { bound: 'max', tag: 'Illustrative', candidateId: cand.id };
+        this.candidatesGroup.add(maxGhost);
+        this.uncertaintySegments.set(`${cand.id}-ghost-max`, maxGhost as unknown as THREE.Line);
       }
 
       let pos3d = this.radecToCartesian(ra, dec, nominalDistanceAu);
@@ -565,22 +590,110 @@ export class SolarSystem {
         const alpha = floatIdx - Math.floor(floatIdx);
         pos3d = new THREE.Vector3().copy(this.activeOrbitCoordinates[idx0]).lerp(this.activeOrbitCoordinates[idx1], alpha);
       }
-      const geo = createProceduralAsteroidGeometry(
-        isUnknown ? 1.4 : 1.1,
-        2,
-        cand.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
-      );
 
-      const color = isUnknown ? new THREE.Color(0xff6b3d) : colorIndexToAsteroidColor(cand.colour_index ?? 1.0);
-      const mat = new THREE.MeshStandardMaterial({
-        color: color,
-        roughness: 0.8,
-        metalness: 0.1,
-        emissive: isSelected ? color : new THREE.Color(0x000000),
-        emissiveIntensity: isSelected ? 0.4 : 0.0,
-      });
+      // Check if custom compiled renderState from Agentic URL-to-3D pipeline is present
+      const customRender = (cand as any).renderState;
+      let mesh: THREE.Mesh;
 
-      const mesh = new THREE.Mesh(geo, mat);
+      if (customRender) {
+        const customScale = customRender.scale || 1.0;
+        let customGeo: THREE.BufferGeometry;
+        if (customRender.textureType === 'gaseous') {
+          customGeo = new THREE.SphereGeometry(1.2 * customScale, 32, 32);
+        } else {
+          customGeo = createProceduralAsteroidGeometry(
+            1.2 * customScale,
+            2,
+            cand.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
+          );
+        }
+
+        const customColor = new THREE.Color(customRender.baseColor || '#38BDF8');
+        const customMat = new THREE.MeshStandardMaterial({
+          color: customColor,
+          roughness: customRender.textureType === 'gaseous' ? 0.35 : 0.85,
+          metalness: 0.1,
+          emissive: isSelected ? customColor : new THREE.Color(0x000000),
+          emissiveIntensity: isSelected ? 0.4 : 0.0,
+        });
+
+        mesh = new THREE.Mesh(customGeo, customMat);
+
+        // Procedural Ring System if hasRings is true
+        if (customRender.hasRings) {
+          const ringInner = 1.8 * customScale;
+          const ringOuter = 2.8 * customScale;
+          const ringGeo = new THREE.RingGeometry(ringInner, ringOuter, 32);
+          const ringMat = new THREE.MeshBasicMaterial({
+            color: customColor,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.65,
+          });
+          const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+          ringMesh.rotation.x = Math.PI / 3;
+          ringMesh.userData = { tag: 'Illustrative', type: 'planetaryRing' };
+          mesh.add(ringMesh);
+        }
+      } else {
+        // Standard procedural asteroid (noise-displaced icosahedron)
+        const geo = createProceduralAsteroidGeometry(
+          isUnknown ? 1.4 : 1.1,
+          2,
+          cand.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
+        );
+
+        const color = isUnknown ? new THREE.Color(0xff6b3d) : colorIndexToAsteroidColor(cand.colour_index ?? 1.0);
+        const mat = new THREE.MeshStandardMaterial({
+          color: color,
+          roughness: 0.8,
+          metalness: 0.1,
+          emissive: isSelected ? color : new THREE.Color(0x000000),
+          emissiveIntensity: isSelected ? 0.4 : 0.0,
+        });
+
+        mesh = new THREE.Mesh(geo, mat);
+      }
+
+      // Procedural Particle Tail for Comets (e.g. Comet 3I/ATLAS)
+      const isComet = cand.match?.body_type === 'comet' ||
+        cand.id.toLowerCase().includes('atlas') ||
+        (cand.match?.designation && cand.match.designation.toLowerCase().includes('comet'));
+
+      if (isComet) {
+        const particleCount = 120;
+        const tailPositions = new Float32Array(particleCount * 3);
+        const tailColors = new Float32Array(particleCount * 3);
+        const awayDir = pos3d.clone().normalize();
+
+        for (let i = 0; i < particleCount; i++) {
+          const dist = (i / particleCount) * 9.0;
+          const spread = (dist / 9.0) * 1.4;
+          tailPositions[i * 3] = awayDir.x * dist + (Math.random() - 0.5) * spread;
+          tailPositions[i * 3 + 1] = awayDir.y * dist + (Math.random() - 0.5) * spread;
+          tailPositions[i * 3 + 2] = awayDir.z * dist + (Math.random() - 0.5) * spread;
+
+          const fade = 1.0 - (dist / 9.0);
+          tailColors[i * 3] = 0.3 * fade;
+          tailColors[i * 3 + 1] = 0.8 * fade;
+          tailColors[i * 3 + 2] = 1.0 * fade;
+        }
+
+        const tailGeo = new THREE.BufferGeometry();
+        tailGeo.setAttribute('position', new THREE.BufferAttribute(tailPositions, 3));
+        tailGeo.setAttribute('color', new THREE.BufferAttribute(tailColors, 3));
+        const tailMat = new THREE.PointsMaterial({
+          size: 0.9,
+          vertexColors: true,
+          transparent: true,
+          opacity: 0.8,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+        });
+        const tailPoints = new THREE.Points(tailGeo, tailMat);
+        tailPoints.userData = { type: 'cometTail', tag: 'Illustrative' };
+        mesh.add(tailPoints);
+      }
       mesh.position.copy(pos3d);
       mesh.userData = {
         candidateId: cand.id,
@@ -945,6 +1058,41 @@ export class SolarSystem {
           const p1 = this.activeOrbitCoordinates[idx1];
 
           activeMesh.position.copy(p0).lerp(p1, alpha);
+        }
+
+        // As scans increase on the slider, physically shrink the 3D distance segment line for "Unknown" objects
+        const cand = this.candidatesData.find((c) => c.id === this.selectedCandidateId);
+        if (cand && cand.distance_range) {
+          const segLine = this.uncertaintySegments.get(cand.id);
+          if (segLine) {
+            const ratio = (this.sliderDay % this.maxDays) / this.maxDays;
+            let curMin: number;
+            let curMax: number;
+            if (cand.distance_range.scan_ranges && cand.distance_range.scan_ranges.length > 0) {
+              const steps = cand.distance_range.scan_ranges;
+              const sIdx = Math.min(steps.length - 1, Math.floor(ratio * (steps.length - 0.001)));
+              curMin = steps[sIdx].min_au;
+              curMax = steps[sIdx].max_au;
+            } else {
+              const baseMin = cand.distance_range.min_au;
+              const baseMax = cand.distance_range.max_au;
+              const shrinkage = 0.5 * ratio;
+              curMin = baseMin + (baseMax - baseMin) * (shrinkage / 2);
+              curMax = baseMax - (baseMax - baseMin) * (shrinkage / 2);
+            }
+            const ra = cand.positions[0].ra;
+            const dec = cand.positions[0].dec;
+            const pMin = this.radecToCartesian(ra, dec, curMin);
+            const pMax = this.radecToCartesian(ra, dec, curMax);
+
+            segLine.geometry.setFromPoints([pMin, pMax]);
+            segLine.geometry.attributes.position.needsUpdate = true;
+
+            const minGhost = this.uncertaintySegments.get(`${cand.id}-ghost-min`) as unknown as THREE.Mesh;
+            if (minGhost) minGhost.position.copy(pMin);
+            const maxGhost = this.uncertaintySegments.get(`${cand.id}-ghost-max`) as unknown as THREE.Mesh;
+            if (maxGhost) maxGhost.position.copy(pMax);
+          }
         }
       }
 

@@ -34,6 +34,7 @@ export type ActiveObjectType =
 interface ObjectPanelProps {
   activeObject: ActiveObjectType;
   onClose?: () => void;
+  onInjectObject?: (payload: NasaObjectPayload) => void;
   className?: string;
 }
 
@@ -84,13 +85,19 @@ function resolveNasaUrlForObject(obj: ActiveObjectType): string {
   return 'https://science.nasa.gov/mission/spherex/';
 }
 
-export const ObjectPanel: React.FC<ObjectPanelProps> = ({ activeObject, onClose, className = '' }) => {
+export const ObjectPanel: React.FC<ObjectPanelProps> = ({
+  activeObject,
+  onClose,
+  onInjectObject,
+  className = '',
+}) => {
   const [data, setData] = useState<NasaObjectPayload | null>(null);
   const [currentUrl, setCurrentUrl] = useState<string>('');
   const [customUrlInput, setCustomUrlInput] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [activeImageZoom, setActiveImageZoom] = useState<string | null>(null);
+  const [injectedToast, setInjectedToast] = useState<boolean>(false);
   const [isMobile, setIsMobile] = useState<boolean>(() => typeof window !== 'undefined' && window.innerWidth < 768);
 
   // Responsive breakpoint tracking
@@ -459,6 +466,25 @@ export const ObjectPanel: React.FC<ObjectPanelProps> = ({ activeObject, onClose,
                       {data.renderState?.hasRings ? 'Present' : 'None'}
                     </span>
                   </div>
+                </div>
+
+                {/* Inject into 3D Canvas Action */}
+                <div className="pt-1 flex items-center justify-between border-t border-white/[0.05]">
+                  <span className="font-mono text-[10px] text-zinc-400">Procedural 3D Compiler</span>
+                  <button
+                    onClick={() => {
+                      if (data && onInjectObject) {
+                        onInjectObject(data);
+                        setInjectedToast(true);
+                        setTimeout(() => setInjectedToast(false), 2500);
+                      }
+                    }}
+                    className="px-3 py-1.5 text-xs font-mono font-medium rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+                    title="Inject procedurally compiled 3D parameters directly into the active Three.js canvas"
+                  >
+                    <span>✦</span>
+                    <span>{injectedToast ? 'Injected in 3D Scene!' : 'Inject into 3D Canvas'}</span>
+                  </button>
                 </div>
               </div>
 

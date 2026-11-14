@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { loadCandidates, loadFields, loadReleases } from './data';
 import { Candidate, Field, Release } from './data/types';
+import { NasaObjectPayload } from './api/fetchNasaObjectWorkflow';
 import { SolarSystemScene } from './scene/SolarSystemScene';
 import { AboutPage } from './ui/components/AboutPage';
 import { DistanceRangeBar } from './ui/components/DistanceRangeBar';
@@ -73,6 +74,47 @@ export const App: React.FC = () => {
     } else {
       window.location.hash = `#/${tab}`;
     }
+  };
+
+  const handleInjectObject = (payload: NasaObjectPayload) => {
+    const customId = `OBJ-${payload.name.toUpperCase().replace(/[^A-Z0-9]/g, '_')}`;
+    const newCandidate: Candidate = {
+      id: customId,
+      field_id: 'procedural_injected_field',
+      release_batch: '2026-CUSTOM',
+      positions: [
+        { time: new Date().toISOString(), ra: 180.0, dec: 10.0, err: 0.04 },
+        { time: new Date(Date.now() + 14400000).toISOString(), ra: 180.03, dec: 10.02, err: 0.04 },
+      ],
+      verdict: payload.classification === 'planet' ? 'known_object' : 'unknown',
+      confidence: 0.99,
+      reason_chain: [
+        `COMPILED: Procedural 3D model generated from NASA article for ${payload.name}`,
+        `CLASSIFICATION: ${payload.classification} [derived]`,
+        `TEXTURE: ${payload.renderState?.textureType} | SCALE: ${payload.renderState?.scale}`,
+      ],
+      match: {
+        designation: payload.name,
+        catalog: 'NASA Science Solar System',
+        body_type: payload.classification,
+        separation_arcsec: 0.0,
+      },
+      colour_index: 1.1,
+      simulated: false,
+      labels: {
+        confidence: 'derived',
+        colour_index: 'measured',
+        positions: 'measured',
+        'positions.ra': 'measured',
+        'positions.dec': 'measured',
+        'positions.err': 'derived',
+        'match.separation_arcsec': 'derived',
+      },
+      renderState: payload.renderState,
+    } as unknown as Candidate;
+
+    setCandidates((prev) => [newCandidate, ...prev.filter((c) => c.id !== customId)]);
+    setSelectedCandidateId(customId);
   };
 
   useEffect(() => {
@@ -247,6 +289,7 @@ export const App: React.FC = () => {
                 <ObjectPanel
                   activeObject={selectedCandidate}
                   onClose={() => setSelectedCandidateId(null)}
+                  onInjectObject={handleInjectObject}
                 />
               ) : (
                 <ObjectSidePanel
