@@ -39,3 +39,49 @@ def test_fits_extension_table_and_masking():
     # Cleanup temporary test png
     if out_png.is_file():
         out_png.unlink()
+
+
+def test_deg_to_sexagesimal_formatting():
+    """Verify conversion from decimal degrees to sexagesimal format for JPL API."""
+    from pipeline.spikes.s2_known import deg_to_sexagesimal, parse_jpl_ra_dec
+
+    ra_str, dec_str = deg_to_sexagesimal(354.3429, -4.9898)
+    assert ra_str.startswith("23-37-")
+    assert dec_str.startswith("-04-59-")
+
+    # Roundtrip check
+    ra_deg, dec_deg = parse_jpl_ra_dec(ra_str, dec_str)
+    assert abs(ra_deg - 354.3429) < 0.01
+    assert abs(dec_deg - (-4.9898)) < 0.01
+
+
+def test_s2_known_asteroids_and_instant_cache():
+    """Verify Spike S2 returns known asteroids and subsequent call is instant via disk cache."""
+    import time
+    from pipeline.spikes.s2_known import query_known_asteroids, KnownAsteroid
+
+    test_ra = 354.3429
+    test_dec = -4.9898
+    test_time = "2026-04-10 00:00:00"
+
+    # Query (will hit disk cache created by s2_known run)
+    t0 = time.perf_counter()
+    asteroids, meta = query_known_asteroids(
+        ra_deg=test_ra,
+        dec_deg=test_dec,
+        obs_time=test_time,
+        fov_hwidth_deg=0.3,
+        vmag_lim=18.0,
+    )
+    elapsed_ms = (time.perf_counter() - t0) * 1000.0
+
+    assert len(asteroids) >= 1, "Must return at least one known small body"
+    assert meta["source"] == "disk_cache", "Should load from disk cache"
+    assert elapsed_ms < 50.0, f"Cached call took {elapsed_ms:.2f} ms (must be < 50ms)"
+
+    first = asteroids[0]
+    assert isinstance(first, KnownAsteroid)
+    assert first.name
+    assert 0.0 <= first.predicted_ra_deg <= 360.0
+    assert -90.0 <= first.predicted_dec_deg <= 90.0
+
