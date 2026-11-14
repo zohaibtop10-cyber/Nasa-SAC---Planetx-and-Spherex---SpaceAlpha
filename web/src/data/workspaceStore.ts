@@ -95,13 +95,15 @@ export function exploreResultToCandidate(result: ExploreObjectResult): Candidate
       distance_max_au: 'derived',
       distance_range: 'derived',
     },
-    // Custom render state for 3D compiler
+    // Custom render state and procedural 3D properties for 3D canvas compiler
     renderState: {
       baseColor: result.procedural3D.baseColorHex,
       scale: result.procedural3D.relativeSize,
       textureType: result.procedural3D.surfaceTexture,
       hasRings: result.classification === 'planet' && result.name.toLowerCase().includes('saturn'),
     },
+    procedural3D: result.procedural3D,
+    coordinates: result.coordinates,
     // Store educational payload for side panels
     educationalData: result.educationalData,
   } as unknown as Candidate;

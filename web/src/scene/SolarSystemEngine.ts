@@ -50,7 +50,7 @@ export interface SolarSystemOptions {
   onHoverObject?: (name: string | null) => void;
 }
 
-export class SolarSystem {
+export class SolarSystemEngine {
   public container: HTMLElement;
   public scene: THREE.Scene;
   public camera: THREE.PerspectiveCamera;
@@ -76,6 +76,14 @@ export class SolarSystem {
   private candidatesData: Candidate[] = [];
   private selectedCandidateId: string | null = null;
   private timeEpochRatio: number = 0.0;
+
+  // Procedural 3D & Entrance Animations
+  private knownCandidateIds: Set<string> = new Set();
+  private entranceAnimations: Map<string, { startTime: number; duration: number; targetScale: number }> = new Map();
+
+  // Floating HTML Badges Layer
+  private badgesLayer!: HTMLElement;
+  private badgeElements: Map<string, HTMLElement> = new Map();
 
   // Active Object 36-Point Orbital Trajectory
   private activeOrbitCoordinates: THREE.Vector3[] = [];
@@ -156,7 +164,8 @@ export class SolarSystem {
 
     this.scene.add(this.candidatesGroup);
 
-    // 7. Build Permanent Legend HUD (never missing)
+    // 7. Build Permanent Legend HUD & Badges Layer
+    this.createBadgesLayer();
     this.createLegendOverlay();
     this.createTooltipOverlay();
 
@@ -506,10 +515,13 @@ export class SolarSystem {
 
     this.candidatesData.forEach((cand) => {
       const posCount = cand.positions.length;
-      let ra = cand.positions[0].ra;
-      let dec = cand.positions[0].dec;
+      // Extract coordinates (RA, Dec, Distance AU) from coordinates object or positions array
+      const coords = (cand as any).coordinates;
+      let ra = coords?.ra ?? cand.positions[0]?.ra ?? 180.0;
+      let dec = coords?.dec ?? cand.positions[0]?.dec ?? 0.0;
+      let nominalDistanceAu = coords?.distance_au ?? 2.77;
 
-      if (posCount > 1) {
+      if (!coords && posCount > 1) {
         const tIndex = this.timeEpochRatio * (posCount - 1);
         const lower = Math.floor(tIndex);
         const upper = Math.min(posCount - 1, lower + 1);
@@ -522,8 +534,7 @@ export class SolarSystem {
       const isUnknown = cand.verdict === 'unknown';
       const isSelected = cand.id === this.selectedCandidateId;
 
-      let nominalDistanceAu = 2.77;
-      if (cand.distance_range) {
+      if (cand.distance_range && !coords) {
         let currentMin: number;
         let currentMax: number;
 
@@ -591,36 +602,43 @@ export class SolarSystem {
         pos3d = new THREE.Vector3().copy(this.activeOrbitCoordinates[idx0]).lerp(this.activeOrbitCoordinates[idx1], alpha);
       }
 
-      // Check if custom compiled renderState from Agentic URL-to-3D pipeline is present
-      const customRender = (cand as any).renderState;
+      // Check if custom compiled procedural3D / renderState is present
+      const customRender = (cand as any).procedural3D || (cand as any).renderState;
       let mesh: THREE.Mesh;
 
       if (customRender) {
-        const customScale = customRender.scale || 1.0;
-        let customGeo: THREE.BufferGeometry;
-        if (customRender.textureType === 'gaseous') {
-          customGeo = new THREE.SphereGeometry(1.2 * customScale, 32, 32);
+        const customScale = customRender.relativeSize || customRender.scale || 1.0;
+        const textureType = customRender.surfaceTexture || customRender.textureType || 'rocky';
+        const baseColorHex = customRender.baseColorHex || customRender.baseColor || '#38BDF8';
+        const customColor = new THREE.Color(baseColorHex);
+        const hasRings = customRender.hasRings || ((cand as any).classification === 'planet' && cand.match?.designation?.toLowerCase().includes('saturn'));
+        const seed = cand.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+
+        if (textureType === 'gaseous') {
+          // Smooth sphere with procedural banded atmospheric shaders
+          const customGeo = new THREE.SphereGeometry(1.2 * customScale, 36, 36);
+          const customMat = this.createBandedGaseousMaterial(baseColorHex);
+          mesh = new THREE.Mesh(customGeo, customMat);
+        } else if (textureType === 'icy') {
+          // Crystalline faceted icy mesh
+          const customGeo = createProceduralAsteroidGeometry(1.2 * customScale, 2, seed);
+          const customMat = this.createIcyMaterial(baseColorHex);
+          mesh = new THREE.Mesh(customGeo, customMat);
         } else {
-          customGeo = createProceduralAsteroidGeometry(
-            1.2 * customScale,
-            2,
-            cand.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
-          );
+          // Rocky: noise-displaced icosahedron
+          const customGeo = createProceduralAsteroidGeometry(1.2 * customScale, 2, seed);
+          const customMat = new THREE.MeshStandardMaterial({
+            color: customColor,
+            roughness: 0.88,
+            metalness: 0.08,
+            emissive: isSelected ? customColor : new THREE.Color(0x000000),
+            emissiveIntensity: isSelected ? 0.4 : 0.0,
+          });
+          mesh = new THREE.Mesh(customGeo, customMat);
         }
 
-        const customColor = new THREE.Color(customRender.baseColor || '#38BDF8');
-        const customMat = new THREE.MeshStandardMaterial({
-          color: customColor,
-          roughness: customRender.textureType === 'gaseous' ? 0.35 : 0.85,
-          metalness: 0.1,
-          emissive: isSelected ? customColor : new THREE.Color(0x000000),
-          emissiveIntensity: isSelected ? 0.4 : 0.0,
-        });
-
-        mesh = new THREE.Mesh(customGeo, customMat);
-
         // Procedural Ring System if hasRings is true
-        if (customRender.hasRings) {
+        if (hasRings) {
           const ringInner = 1.8 * customScale;
           const ringOuter = 2.8 * customScale;
           const ringGeo = new THREE.RingGeometry(ringInner, ringOuter, 32);
@@ -653,6 +671,17 @@ export class SolarSystem {
         });
 
         mesh = new THREE.Mesh(geo, mat);
+      }
+
+      // Check entrance animation: scale up from 0 for newly appeared objects
+      if (!this.knownCandidateIds.has(cand.id)) {
+        this.knownCandidateIds.add(cand.id);
+        mesh.scale.set(0.001, 0.001, 0.001);
+        this.entranceAnimations.set(cand.id, {
+          startTime: performance.now(),
+          duration: 750,
+          targetScale: 1.0,
+        });
       }
 
       // Procedural Particle Tail for Comets (e.g. Comet 3I/ATLAS)
@@ -718,6 +747,74 @@ export class SolarSystem {
 
       this.candidatesGroup.add(mesh);
       this.candidateMeshes.set(cand.id, mesh);
+
+      // Attach an HTML <Badge> to the object labeling it "Illustrative" (Rule 2 non-negotiable)
+      if (this.badgesLayer) {
+        let badge = this.badgeElements.get(cand.id);
+        const displayName = cand.match?.designation || cand.id;
+        const badgeBorder = isSelected ? '#FF6B3D' : 'rgba(56, 189, 248, 0.5)';
+        const badgeColor = isSelected ? '#FF6B3D' : '#38BDF8';
+
+        if (!badge) {
+          badge = document.createElement('div');
+          badge.className = 'candidate-illustrative-badge';
+          badge.setAttribute('data-candidate-id', cand.id);
+          Object.assign(badge.style, {
+            position: 'absolute',
+            top: '0',
+            left: '0',
+            fontFamily: 'monospace',
+            fontSize: '9px',
+            fontWeight: '600',
+            padding: '2px 7px',
+            backgroundColor: 'rgba(17, 17, 19, 0.90)',
+            backdropFilter: 'blur(6px)',
+            border: `1px solid ${badgeBorder}`,
+            borderRadius: '4px',
+            color: badgeColor,
+            whiteSpace: 'nowrap',
+            userSelect: 'none',
+            pointerEvents: 'auto',
+            cursor: 'pointer',
+            display: 'none',
+            willChange: 'transform',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.6)',
+            zIndex: '24',
+          });
+
+          badge.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (this.onSelectCandidate) {
+              this.onSelectCandidate(cand.id);
+            }
+          });
+
+          this.badgesLayer.appendChild(badge);
+          this.badgeElements.set(cand.id, badge);
+        } else {
+          badge.style.border = `1px solid ${badgeBorder}`;
+          badge.style.color = badgeColor;
+        }
+
+        badge.innerHTML = `
+          <span style="display:inline-block; width:5px; height:5px; border-radius:50%; background:${badgeColor}; margin-right:4px;"></span>
+          <span style="color:#EDEDED; margin-right:5px;">${displayName}</span>
+          <span style="color:${badgeColor}; font-size:8px; border:1px solid ${badgeBorder}; border-radius:3px; padding:0 3px;">Illustrative</span>
+        `;
+      }
+    });
+
+    // Clean up badges whose candidate was removed
+    const activeIds = new Set(this.candidatesData.map((c) => c.id));
+    this.badgeElements.forEach((badge, id) => {
+      if (!activeIds.has(id)) {
+        if (badge.parentElement) {
+          badge.parentElement.removeChild(badge);
+        }
+        this.badgeElements.delete(id);
+        this.knownCandidateIds.delete(id);
+        this.entranceAnimations.delete(id);
+      }
     });
   }
 
@@ -915,6 +1012,103 @@ export class SolarSystem {
     });
   }
 
+  private createBadgesLayer(): void {
+    this.badgesLayer = document.createElement('div');
+    this.badgesLayer.id = 'scene-badges-layer';
+    Object.assign(this.badgesLayer.style, {
+      position: 'absolute',
+      top: '0',
+      left: '0',
+      width: '100%',
+      height: '100%',
+      pointerEvents: 'none',
+      overflow: 'hidden',
+      zIndex: '22',
+    });
+    this.container.appendChild(this.badgesLayer);
+  }
+
+  /**
+   * Generates a procedural banded shader material for gaseous planets/objects.
+   * Includes harmonic bands, swirl turbulence, and limb Fresnel rim.
+   */
+  private createBandedGaseousMaterial(baseColorHex: string): THREE.ShaderMaterial {
+    const baseColor = new THREE.Color(baseColorHex);
+    const darkBand = baseColor.clone().multiplyScalar(0.65);
+    const lightBand = baseColor.clone().lerp(new THREE.Color(1.0, 1.0, 1.0), 0.35);
+
+    return new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0.0 },
+        uBaseColor: { value: baseColor },
+        uDarkBand: { value: darkBand },
+        uLightBand: { value: lightBand },
+      },
+      vertexShader: `
+        varying vec3 vPosition;
+        varying vec3 vNormal;
+        varying vec3 vViewPosition;
+        varying vec2 vUv;
+
+        void main() {
+          vUv = uv;
+          vNormal = normalize(normalMatrix * normal);
+          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+          vViewPosition = -mvPosition.xyz;
+          vPosition = position;
+          gl_Position = projectionMatrix * mvPosition;
+        }
+      `,
+      fragmentShader: `
+        uniform float uTime;
+        uniform vec3 uBaseColor;
+        uniform vec3 uDarkBand;
+        uniform vec3 uLightBand;
+        varying vec3 vPosition;
+        varying vec3 vNormal;
+        varying vec3 vViewPosition;
+        varying vec2 vUv;
+
+        void main() {
+          // Multi-frequency banded coordinate along vertical axis
+          float bandCoord = vPosition.y * 3.2 + sin(vPosition.x * 2.5 + uTime * 0.12) * 0.2 + cos(vPosition.z * 2.5 + uTime * 0.08) * 0.15;
+          float band = sin(bandCoord * 6.28318) * 0.5 + 0.5;
+
+          // Swirl turbulence
+          float swirl = sin(vUv.x * 28.0 + uTime * 0.25) * cos(vUv.y * 14.0) * 0.14;
+          band = clamp(band + swirl, 0.0, 1.0);
+
+          vec3 atmosphereColor = mix(uDarkBand, uLightBand, band);
+
+          // Illumination
+          vec3 n = normalize(vNormal);
+          float diff = clamp(dot(n, vec3(0.0, 0.0, 1.0)), 0.25, 1.0);
+
+          // Atmospheric limb Fresnel rim glow
+          vec3 v = normalize(vViewPosition);
+          float rim = 1.0 - max(dot(n, v), 0.0);
+          rim = pow(rim, 3.2) * 0.65;
+
+          vec3 finalColor = atmosphereColor * diff + (uLightBand * rim);
+          gl_FragColor = vec4(finalColor, 1.0);
+        }
+      `,
+    });
+  }
+
+  /**
+   * Generates a crystalline faceted material for icy bodies.
+   */
+  private createIcyMaterial(baseColorHex: string): THREE.MeshStandardMaterial {
+    const color = new THREE.Color(baseColorHex);
+    return new THREE.MeshStandardMaterial({
+      color,
+      roughness: 0.22,
+      metalness: 0.38,
+      flatShading: true,
+    });
+  }
+
   private createTooltipOverlay(): void {
     this.tooltipElement = document.createElement('div');
     this.tooltipElement.id = 'scene-hover-tooltip';
@@ -1096,6 +1290,63 @@ export class SolarSystem {
         }
       }
 
+      // Entrance scaling animation (from 0 to 1 with overshoot ease-out)
+      const now = performance.now();
+      this.entranceAnimations.forEach((anim, candId) => {
+        const mesh = this.candidateMeshes.get(candId);
+        if (!mesh) {
+          this.entranceAnimations.delete(candId);
+          return;
+        }
+        const progress = Math.min(1.0, Math.max(0.0, (now - anim.startTime) / anim.duration));
+        const s = 1.70158;
+        const p = progress - 1.0;
+        const factor = p * p * ((s + 1) * p + s) + 1.0;
+        const curScale = Math.max(0.001, factor * anim.targetScale);
+        mesh.scale.set(curScale, curScale, curScale);
+        if (progress >= 1.0) {
+          mesh.scale.set(anim.targetScale, anim.targetScale, anim.targetScale);
+          this.entranceAnimations.delete(candId);
+        }
+      });
+
+      // Update time uniform for procedural banded gaseous materials
+      this.candidateMeshes.forEach((mesh) => {
+        if (mesh instanceof THREE.Mesh && mesh.material instanceof THREE.ShaderMaterial) {
+          if (mesh.material.uniforms?.uTime) {
+            mesh.material.uniforms.uTime.value = elapsed;
+          }
+        }
+      });
+
+      // Update position of floating HTML <Badge> elements labeled "Illustrative"
+      if (this.badgesLayer && this.container) {
+        const cWidth = this.container.clientWidth;
+        const cHeight = this.container.clientHeight;
+        const screenPos = new THREE.Vector3();
+
+        this.candidateMeshes.forEach((mesh, id) => {
+          const badge = this.badgeElements.get(id);
+          if (!badge) return;
+
+          mesh.getWorldPosition(screenPos);
+          screenPos.y += 2.2; // Vertical offset directly above model
+          screenPos.project(this.camera);
+
+          const inFront = screenPos.z > -1.0 && screenPos.z < 1.0;
+          const inFrustum = screenPos.x >= -1.1 && screenPos.x <= 1.1 && screenPos.y >= -1.1 && screenPos.y <= 1.1;
+
+          if (inFront && inFrustum) {
+            const x = Math.round((screenPos.x * 0.5 + 0.5) * cWidth);
+            const y = Math.round((-(screenPos.y * 0.5) + 0.5) * cHeight);
+            badge.style.display = 'flex';
+            badge.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -100%)`;
+          } else {
+            badge.style.display = 'none';
+          }
+        });
+      }
+
       // Update background cosmos procedural scintillation
       if (this.backgroundCosmos) {
         this.backgroundCosmos.update(delta);
@@ -1128,6 +1379,12 @@ export class SolarSystem {
     this.controls.dispose();
     this.renderer.dispose();
 
+    if (this.badgesLayer && this.badgesLayer.parentElement) {
+      this.badgesLayer.parentElement.removeChild(this.badgesLayer);
+    }
+    this.badgeElements.clear();
+    this.entranceAnimations.clear();
+
     if (this.activeOrbitLine) {
       this.scene.remove(this.activeOrbitLine);
       this.activeOrbitLine.geometry.dispose();
@@ -1150,3 +1407,5 @@ export class SolarSystem {
     }
   }
 }
+
+export { SolarSystemEngine as SolarSystem };

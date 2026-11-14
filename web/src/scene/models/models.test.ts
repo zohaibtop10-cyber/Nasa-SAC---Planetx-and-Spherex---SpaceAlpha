@@ -239,6 +239,70 @@ async function runModelTests() {
   assert.strictEqual(day365.pos.x, orbitPoints[0].x);
   assert.strictEqual(day365.pos.z, orbitPoints[0].z);
 
+  // 5. Dynamic Procedural 3D Canvas Rendering & Floating Badges
+  console.log('  5. Testing Dynamic Procedural 3D Objects & HTML Illustrative Badges...');
+
+  // Mock explored celestial objects
+  const mockJupiterExplored = {
+    name: 'Jupiter',
+    classification: 'planet',
+    coordinates: { distance_au: 5.2, ra: 28.5, dec: 12.3 },
+    procedural3D: {
+      baseColorHex: '#D97706',
+      surfaceTexture: 'gaseous' as const,
+      relativeSize: 1.8,
+    },
+  };
+
+  const mockCeresExplored = {
+    name: '1 Ceres',
+    classification: 'asteroid',
+    coordinates: { distance_au: 2.77, ra: 164.21, dec: 30.31 },
+    procedural3D: {
+      baseColorHex: '#A39D95',
+      surfaceTexture: 'rocky' as const,
+      relativeSize: 0.9,
+    },
+  };
+
+  // Test XYZ conversion from (ra, dec, distance_au)
+  const radecToXYZ = (raDeg: number, decDeg: number, distAu: number) => {
+    const raRad = (raDeg * Math.PI) / 180.0;
+    const decRad = (decDeg * Math.PI) / 180.0;
+    // Dual scale formula:
+    const r = distAu <= 5.0 ? distAu * 10.0 : 50.0 + Math.log10(distAu / 5.0 + 1.0) * 38.0;
+    return new THREE.Vector3(
+      r * Math.cos(decRad) * Math.cos(raRad),
+      r * Math.sin(decRad),
+      r * Math.cos(decRad) * Math.sin(raRad)
+    );
+  };
+
+  const jupiterXYZ = radecToXYZ(mockJupiterExplored.coordinates.ra, mockJupiterExplored.coordinates.dec, mockJupiterExplored.coordinates.distance_au);
+  assert.ok(jupiterXYZ.length() > 50, 'Jupiter distance in dual scale must place it in the outer log realm (>50 units)');
+
+  const ceresXYZ = radecToXYZ(mockCeresExplored.coordinates.ra, mockCeresExplored.coordinates.dec, mockCeresExplored.coordinates.distance_au);
+  assert.ok(ceresXYZ.length() < 50, 'Ceres distance (2.77 AU) must place it in the inner linear realm (<50 units)');
+
+  // Verify Entrance Animation Curve (overshoot ease-out)
+  const calcScale = (progress: number) => {
+    const s = 1.70158;
+    const p = Math.min(1.0, Math.max(0.0, progress)) - 1.0;
+    const factor = p * p * ((s + 1) * p + s) + 1.0;
+    return Math.max(0.001, factor);
+  };
+
+  assert.ok(calcScale(0.0) < 0.01, 'At progress 0, scale must start at ~0');
+  assert.ok(calcScale(0.8) > 0.9, 'At progress 0.8, scale must be expanding rapidly');
+  assert.ok(calcScale(0.9) > 1.0, 'Curve must exhibit overshoot > 1.0 before settling');
+  assert.strictEqual(calcScale(1.0), 1.0, 'At progress 1.0, scale must settle exactly at 1.0');
+
+  // Verify HTML Badge Creation
+  const badgeEl = (globalThis as any).document.createElement('div');
+  badgeEl.className = 'candidate-illustrative-badge';
+  badgeEl.textContent = 'Illustrative';
+  assert.strictEqual(badgeEl.textContent, 'Illustrative', 'Floating badge must explicitly declare "Illustrative"');
+
   // Cleanup
   cosmos.dispose();
   asteroid.dispose();

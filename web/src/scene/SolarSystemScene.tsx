@@ -16,7 +16,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { Candidate } from '../data/types';
-import { SolarSystem } from './SolarSystem';
+import { SolarSystemEngine } from './SolarSystemEngine';
 
 interface SolarSystemSceneProps {
   candidates: Candidate[];
@@ -34,14 +34,14 @@ export const SolarSystemScene: React.FC<SolarSystemSceneProps> = ({
   sliderDay,
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
-  const engineRef = useRef<SolarSystem | null>(null);
+  const engineRef = useRef<SolarSystemEngine | null>(null);
 
   // Initialize SolarSystem engine
   useEffect(() => {
     const container = mountRef.current;
     if (!container) return;
 
-    const engine = new SolarSystem(container, {
+    const engine = new SolarSystemEngine(container, {
       initialScaleMode: 'dual',
       onSelectCandidate: (id) => onSelectCandidate(id),
     });

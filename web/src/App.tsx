@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { loadCandidates, loadFields, loadReleases } from './data';
 import { Candidate, Field, Release } from './data/types';
 import { NasaObjectPayload } from './api/fetchNasaObjectWorkflow';
-import { SolarSystemScene } from './scene/SolarSystemScene';
+import { SolarSystem } from './scene/SolarSystem';
 import { AboutPage } from './ui/components/AboutPage';
 import { DistanceRangeBar } from './ui/components/DistanceRangeBar';
 import { FeedPanel } from './ui/components/FeedPanel';
@@ -292,10 +292,10 @@ export const App: React.FC = () => {
                 />
               </div>
 
-              <SolarSystemScene
+              <SolarSystem
                 candidates={candidates}
                 selectedCandidateId={selectedCandidateId}
-                onSelectCandidate={(id) => {
+                onSelectCandidate={(id: string) => {
                   setSelectedCandidateId(id);
                   setCurrentScanIndex(0);
                   setTimeEpochRatio(0.0);
