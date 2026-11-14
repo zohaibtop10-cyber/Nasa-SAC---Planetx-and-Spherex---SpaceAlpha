@@ -260,6 +260,15 @@ async function runComponentTests() {
   assert.strictEqual(useWorkspaceStore.getState().exploredObjects.length, 1);
   assert.strictEqual(useWorkspaceStore.getState().activeExploredObject?.name, '1 Ceres');
 
+  // 9. Verify ObjectPanel educationalData schema & layout contracts
+  console.log('  9. Verifying ObjectPanel educationalData schema & layout contracts...');
+  const activeExploredCandidate = candidateFromExplore as any;
+  assert.ok(activeExploredCandidate.educationalData, 'Explored candidate must retain educationalData payload');
+  assert.strictEqual(activeExploredCandidate.educationalData.summary, mockExploreResult.educationalData.summary);
+  assert.deepStrictEqual(activeExploredCandidate.educationalData.notableFacts, mockExploreResult.educationalData.notableFacts);
+  assert.deepStrictEqual(activeExploredCandidate.educationalData.mediaUrls, mockExploreResult.educationalData.mediaUrls);
+  assert.strictEqual(activeExploredCandidate.renderState.tag, 'Illustrative', 'Rule 2: Model must be tagged Illustrative');
+
   console.log('All UI component tests passed successfully!');
 }
 

@@ -101,6 +101,7 @@ export function exploreResultToCandidate(result: ExploreObjectResult): Candidate
       scale: result.procedural3D.relativeSize,
       textureType: result.procedural3D.surfaceTexture,
       hasRings: result.classification === 'planet' && result.name.toLowerCase().includes('saturn'),
+      tag: 'Illustrative',
     },
     procedural3D: result.procedural3D,
     coordinates: result.coordinates,
