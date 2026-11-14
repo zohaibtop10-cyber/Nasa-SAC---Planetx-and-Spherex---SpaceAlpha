@@ -1,13 +1,15 @@
 /**
  * Next.js App Router Route Handler: /api/fetch-nasa-object
  *
- * Implements an on-demand multi-agent workflow:
- * 1. Agent 1 (Scraper): Fetches raw HTML and extracts <article> text & <img> URLs.
- * 2. Agent 2 (Extractor): Analyzes text with Gemini (or fallback) to extract metadata.
- * 3. Agent 3 (Procedural Compiler): Generates procedural 3D parameters (renderState).
- * 4. Consolidator: Merges into a structured bento-grid payload.
+ * Implements an on-demand multi-agent workflow using official Google Gemini API SDK:
+ * 1. Sub-Agent 1 (Scraper): Accepts target NASA URL in POST body, fetches raw HTML,
+ *    and extracts clean <article> text and candidate <img> URLs.
+ * 2. Sub-Agent 2 (Extractor & 3D Compiler): Initializes @google/generative-ai SDK with
+ *    process.env.GEMINI_API_KEY, utilizes 'gemini-1.5-flash' with responseMimeType: 'application/json',
+ *    and strictly extracts { name, classification, summary, images, renderState }.
+ * 3. Non-Negotiable Compliance: Enforces Rule 2 (tag: "Illustrative") on renderState.
  *
- * Handles timeouts and scraping errors with an HTTP 400 response.
+ * Handles timeouts, malformed requests, and scraping errors with graceful HTTP 400 responses.
  */
 
 import { executeMultiAgentPipeline } from '../../../api/fetchNasaObjectWorkflow';

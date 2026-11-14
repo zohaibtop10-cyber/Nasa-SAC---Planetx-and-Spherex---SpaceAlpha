@@ -1,13 +1,20 @@
 /**
  * fetchNasaObjectWorkflow.ts
- * Multi-Agent Workflow to parse a NASA URL and return structured 3D parameters and bento-grid data.
+ * Multi-Agent Workflow to scrape NASA articles and compile procedural 3D parameters.
  *
- * Agents:
- * - Agent 1 (Scraper): Fetches raw HTML from target NASA URL, extracts <article> text and <img> URLs.
- * - Agent 2 (Extractor): Uses Google Gemini API (with deterministic fallback) to extract { name, classification, summary, images }.
- * - Agent 3 (Procedural Compiler): Uses Google Gemini API (with deterministic fallback) to compile { renderState: { baseColor, scale, textureType, hasRings } }.
- * - Consolidator: Merges outputs and returns the complete JSON payload with Rule 2 "Illustrative" tagging.
+ * Architecture:
+ * - Sub-Agent 1 (Scraper): Accepts target NASA URL in request body, fetches raw HTML,
+ *   extracts clean <article> text, and harvests candidate <img> URLs.
+ * - Sub-Agent 2 (Extractor & 3D Compiler): Uses the official Google Gemini API SDK
+ *   (@google/generative-ai) with `gemini-1.5-flash`, `responseMimeType: "application/json"`,
+ *   and strict system instructions to extract astronomical metadata and compile procedural
+ *   3D rendering parameters ({ name, classification, summary, images, renderState }).
+ * - Robust Fallback & Error Handling: Gracefully falls back to heuristic astronomical
+ *   rules if API keys are omitted or rate-limited; strictly validates inputs and formats.
+ * - Non-Negotiable Compliance: Enforces Rule 2 (`tag: "Illustrative"`) on all 3D render states.
  */
+
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export type ObjectClassification = 'planet' | 'asteroid' | 'comet' | 'star';
 export type TextureType = 'rocky' | 'gaseous' | 'icy';
@@ -43,11 +50,76 @@ export interface NasaObjectPayload {
 }
 
 // ---------------------------------------------------------------------------
-// Agent 1: Scraper
+// Helpers
 // ---------------------------------------------------------------------------
 
-export async function scrapeNasaUrl(rawUrl: string, timeoutMs = 12000): Promise<ScrapedData> {
-  if (!rawUrl || typeof rawUrl !== 'string') {
+export function getGeminiApiKey(explicitKey?: string): string | undefined {
+  if (explicitKey && explicitKey.trim()) return explicitKey.trim();
+  if (typeof process !== 'undefined' && process.env) {
+    if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim()) {
+      return process.env.GEMINI_API_KEY.trim();
+    }
+    if (process.env.GOOGLE_API_KEY && process.env.GOOGLE_API_KEY.trim()) {
+      return process.env.GOOGLE_API_KEY.trim();
+    }
+    if (process.env.VITE_GEMINI_API_KEY && process.env.VITE_GEMINI_API_KEY.trim()) {
+      return process.env.VITE_GEMINI_API_KEY.trim();
+    }
+  }
+  return undefined;
+}
+
+export function sanitizeHexColor(val: any, fallback = '#8C827A'): string {
+  if (typeof val === 'string' && /^#([0-9A-F]{3}){1,2}$/i.test(val.trim())) {
+    return val.trim().toUpperCase();
+  }
+  return fallback;
+}
+
+export function cleanHtmlText(raw: string): string {
+  return raw
+    .replace(/<br\s*[\/]?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<\/h[1-6]>/gi, '\n\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function parseJsonFromLlm(text: string): any {
+  try {
+    const cleaned = text
+      .replace(/^```json\s*/i, '')
+      .replace(/^```\s*/i, '')
+      .replace(/\s*```$/i, '')
+      .trim();
+    return JSON.parse(cleaned);
+  } catch (err) {
+    const match = text.match(/\{[\s\S]*\}/);
+    if (match) {
+      return JSON.parse(match[0]);
+    }
+    throw err;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Sub-Agent 1: Scraper
+// ---------------------------------------------------------------------------
+
+/**
+ * Sub-Agent 1 (Scraper): Accepts a NASA URL, fetches raw HTML,
+ * extracts main <article> text and harvests <img> URLs.
+ */
+export async function subAgent1Scraper(rawUrl: string, timeoutMs = 12000): Promise<ScrapedData> {
+  if (!rawUrl || typeof rawUrl !== 'string' || !rawUrl.trim()) {
     throw new Error("Missing or invalid 'url' parameter.");
   }
 
@@ -91,9 +163,9 @@ export async function scrapeNasaUrl(rawUrl: string, timeoutMs = 12000): Promise<
 
   // 1. Extract <title>
   const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-  const title = titleMatch ? cleanText(titleMatch[1]).replace(/\s*\|\s*NASA.*$/i, '').trim() : '';
+  const title = titleMatch ? cleanHtmlText(titleMatch[1]).replace(/\s*\|\s*NASA.*$/i, '').trim() : '';
 
-  // 2. Extract main article text
+  // 2. Extract main <article> text
   let rawArticle = '';
   const articleMatch = html.match(/<article[^>]*>([\s\S]*?)<\/article>/i);
   if (articleMatch) {
@@ -108,15 +180,15 @@ export async function scrapeNasaUrl(rawUrl: string, timeoutMs = 12000): Promise<
     }
   }
 
-  // Clean scripts, styles, nav, header, footer
-  let cleanHtml = rawArticle
+  // Clean boilerplate tags
+  const cleanHtml = rawArticle
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ' ')
     .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, ' ')
     .replace(/<header\b[^<]*(?:(?!<\/header>)<[^<]*)*<\/header>/gi, ' ')
     .replace(/<footer\b[^<]*(?:(?!<\/footer>)<[^<]*)*<\/footer>/gi, ' ')
     .replace(/<nav\b[^<]*(?:(?!<\/nav>)<[^<]*)*<\/nav>/gi, ' ');
 
-  const articleText = cleanText(cleanHtml);
+  const articleText = cleanHtmlText(cleanHtml);
 
   // 3. Extract <img> source URLs
   const imgRegex = /<img\b[^>]*?\b(?:src|data-src)=["']([^"']+)["'][^>]*>/gi;
@@ -128,7 +200,6 @@ export async function scrapeNasaUrl(rawUrl: string, timeoutMs = 12000): Promise<
     if (src && !src.startsWith('data:') && !src.includes('1x1') && !src.includes('blank.gif')) {
       try {
         const resolved = new URL(src, parsedUrl.href).href;
-        // Keep valid image extensions or NASA asset paths
         if (/\.(jpe?g|png|webp|tiff?|gif)(\?.*)?$/i.test(resolved) || resolved.includes('/images/')) {
           if (!rawImageUrls.includes(resolved)) {
             rawImageUrls.push(resolved);
@@ -140,7 +211,7 @@ export async function scrapeNasaUrl(rawUrl: string, timeoutMs = 12000): Promise<
     }
   }
 
-  // If article has very few images, search full HTML
+  // If article block yielded 0 images, check the wider document
   if (rawImageUrls.length === 0) {
     while ((m = imgRegex.exec(html)) !== null) {
       const src = m[1]?.trim();
@@ -160,91 +231,156 @@ export async function scrapeNasaUrl(rawUrl: string, timeoutMs = 12000): Promise<
   return {
     url: parsedUrl.href,
     title,
-    articleText: articleText.slice(0, 8000), // Cap context to avoid token overflow
+    articleText: articleText.slice(0, 8000), // Cap context window to prevent token overflow
     images: rawImageUrls.slice(0, 10),
   };
 }
 
-function cleanText(raw: string): string {
-  return raw
-    .replace(/<br\s*[\/]?>/gi, '\n')
-    .replace(/<\/p>/gi, '\n\n')
-    .replace(/<\/div>/gi, '\n')
-    .replace(/<\/h[1-6]>/gi, '\n\n')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\s+/g, ' ')
-    .trim();
-}
+// Alias for backwards compatibility
+export const scrapeNasaUrl = subAgent1Scraper;
 
 // ---------------------------------------------------------------------------
-// Agent 2: Extractor (Google Gemini API with Heuristic Fallback)
+// Sub-Agent 2: Extractor & 3D Compiler (Official Google Gemini SDK)
 // ---------------------------------------------------------------------------
 
-export async function extractObjectDetails(
+const SUBAGENT_2_SYSTEM_INSTRUCTION = `You are an astronomical data extractor and procedural 3D compiler in a NASA science pipeline.
+Your mission is to analyze scraped NASA articles and extract accurate astronomical metadata while compiling 3D procedural rendering parameters.
+Strict Rule: You must return valid JSON matching the exact schema requested with no markdown commentary.`;
+
+/**
+ * Sub-Agent 2 (Extractor & 3D Compiler): Uses the official @google/generative-ai SDK,
+ * initializing GoogleGenerativeAI with process.env.GEMINI_API_KEY, utilizing model 'gemini-1.5-flash',
+ * and enforcing JSON output via responseMimeType: "application/json".
+ *
+ * Expected Schema:
+ * {
+ *   "name": "string",
+ *   "classification": "planet | asteroid | comet | star",
+ *   "summary": "string",
+ *   "images": ["string"],
+ *   "renderState": {
+ *     "baseColor": "hex code",
+ *     "scale": "number",
+ *     "textureType": "rocky | gaseous | icy",
+ *     "hasRings": "boolean"
+ *   }
+ * }
+ */
+export async function subAgent2ExtractorAndCompiler(
   scraped: ScrapedData,
   apiKey?: string
-): Promise<ExtractedObject> {
-  const geminiKey = apiKey || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+): Promise<NasaObjectPayload> {
+  const geminiKey = getGeminiApiKey(apiKey);
 
   if (geminiKey) {
     try {
-      const prompt = `You are Agent 2 (Extractor) in an astronomical intelligence pipeline.
-Analyze the following NASA article text and candidate image URLs.
-Extract and return strictly formatted JSON with no markdown wrapping:
+      const genAI = new GoogleGenerativeAI(geminiKey);
+      const model = genAI.getGenerativeModel({
+        model: 'gemini-1.5-flash',
+        systemInstruction: SUBAGENT_2_SYSTEM_INSTRUCTION,
+        generationConfig: {
+          responseMimeType: 'application/json',
+          temperature: 0.1,
+        },
+      });
+
+      const prompt = `Analyze the following scraped NASA article and candidate image URLs.
+Extract the celestial object's identity and compile procedural 3D render parameters.
+
+Return a single JSON object matching this exact schema:
 {
-  "name": string (the primary name or designation of the celestial object, e.g. "Europa", "1 Ceres", "Bennu"),
-  "classification": "planet" | "asteroid" | "comet" | "star",
-  "summary": string (a concise 1-2 sentence overview of its key physical or scientific characteristics),
-  "images": string[] (up to 4 most relevant image URLs from the candidate list)
+  "name": "string",
+  "classification": "planet | asteroid | comet | star",
+  "summary": "string",
+  "images": ["string"],
+  "renderState": {
+    "baseColor": "hex code",
+    "scale": 1.0,
+    "textureType": "rocky | gaseous | icy",
+    "hasRings": false
+  }
 }
 
-Title: ${scraped.title}
+Guidelines:
+1. "name": The primary celestial name (e.g. "Europa", "101955 Bennu", "1P/Halley", "Betelgeuse").
+2. "classification": One of "planet", "asteroid", "comet", "star".
+3. "summary": Concise 1-2 sentence overview of its physical traits and scientific significance.
+4. "images": Up to 4 most relevant image URLs selected from the candidate images list.
+5. "renderState.baseColor": Hex color code representing realistic astronomical surface albedo (e.g. "#8C827A" for rocky asteroid, "#D97706" for Jupiter, "#B0E0E6" for comet, "#FFAE42" for star).
+6. "renderState.scale": Relative positive scale float (e.g. 0.8 for small asteroid, 1.0 for terrestrial body, 2.2 for gas giant or star).
+7. "renderState.textureType": Exactly one of "rocky", "gaseous", or "icy".
+8. "renderState.hasRings": true only if a planetary ring system exists (e.g. Saturn, Uranus).
+
+Article Title: ${scraped.title}
+Target URL: ${scraped.url}
 Article Text:
-${scraped.articleText.slice(0, 4000)}
+${scraped.articleText.slice(0, 4500)}
 
 Candidate Images:
 ${JSON.stringify(scraped.images)}`;
 
-      const res = await callGemini(geminiKey, prompt);
-      const parsed = parseJsonFromLlm(res);
-      if (parsed && parsed.name && parsed.classification) {
+      const result = await model.generateContent(prompt);
+      const responseText = result.response.text();
+      const parsed = parseJsonFromLlm(responseText);
+
+      if (parsed && typeof parsed.name === 'string') {
         const validClassification: ObjectClassification = ['planet', 'asteroid', 'comet', 'star'].includes(
           parsed.classification
         )
           ? parsed.classification
           : 'asteroid';
 
+        const rs = parsed.renderState || {};
+        const validTexture: TextureType = ['rocky', 'gaseous', 'icy'].includes(rs.textureType)
+          ? rs.textureType
+          : 'rocky';
+
+        const chosenImages = Array.isArray(parsed.images) && parsed.images.length > 0
+          ? parsed.images.filter((img: any) => typeof img === 'string' && img.startsWith('http'))
+          : scraped.images.slice(0, 4);
+
         return {
           name: String(parsed.name).trim(),
           classification: validClassification,
-          summary: String(parsed.summary || `${parsed.name} is an astronomical object observed by NASA missions.`).trim(),
-          images: Array.isArray(parsed.images) && parsed.images.length > 0 ? parsed.images : scraped.images.slice(0, 4),
+          summary: String(parsed.summary || `${parsed.name} is an astronomical object observed by NASA.`).trim(),
+          images: chosenImages.length > 0 ? chosenImages : scraped.images.slice(0, 4),
+          renderState: {
+            baseColor: sanitizeHexColor(rs.baseColor, '#8C827A'),
+            scale: typeof rs.scale === 'number' && rs.scale > 0 ? Number(rs.scale.toFixed(2)) : 1.0,
+            textureType: validTexture,
+            hasRings: Boolean(rs.hasRings),
+            tag: 'Illustrative', // Rule 2 Non-Negotiable
+          },
         };
       }
     } catch (exc) {
-      console.warn('[Agent 2: Extractor] Gemini API call failed or timed out. Falling back to heuristic extractor:', exc);
+      console.warn(
+        '[Sub-Agent 2: Extractor & 3D Compiler] Gemini 1.5 Flash SDK call failed or unconfigured. Proceeding with deterministic fallback:',
+        exc
+      );
     }
   }
 
-  // Deterministic Fallback Extractor
-  return fallbackExtractor(scraped);
+  // Graceful Deterministic Fallback if API key missing or request throttled
+  return fallbackExtractorAndCompiler(scraped);
 }
 
-function fallbackExtractor(scraped: ScrapedData): ExtractedObject {
-  // Name resolution
+// Alias for convenience
+export const extractAndCompileNasaObject = subAgent2ExtractorAndCompiler;
+
+// ---------------------------------------------------------------------------
+// Deterministic Fallback Extractor & 3D Compiler
+// ---------------------------------------------------------------------------
+
+export function fallbackExtractorAndCompiler(scraped: ScrapedData): NasaObjectPayload {
+  // 1. Resolve name
   let name = scraped.title || 'NASA Celestial Object';
   const nameMatch = scraped.title.match(/(?:about|overview|mission to|exploring|target)?\s*([A-Z0-9\s\-_–—]+)/i);
   if (nameMatch && nameMatch[1].trim().length > 2) {
     name = nameMatch[1].trim();
   }
 
-  // Classification resolution (Title/URL prioritized over body mentions)
+  // 2. Resolve classification
   const titleLower = scraped.title.toLowerCase();
   const urlPath = scraped.url.toLowerCase();
   const bodyLower = scraped.articleText.toLowerCase();
@@ -276,7 +412,6 @@ function fallbackExtractor(scraped: ScrapedData): ExtractedObject {
   ) {
     classification = 'star';
   } else {
-    // Secondary check: Body keyword counts
     const cometCount = (bodyLower.match(/\b(comet|comets|coma|perihelion)\b/g) || []).length;
     const planetCount = (bodyLower.match(/\b(planet|planets|gas giant|terrestrial planet)\b/g) || []).length;
     const asteroidCount = (bodyLower.match(/\b(asteroid|asteroids|meteoroid|meteorite)\b/g) || []).length;
@@ -293,7 +428,7 @@ function fallbackExtractor(scraped: ScrapedData): ExtractedObject {
     }
   }
 
-  // Summary generation from first 2 sentences
+  // 3. Resolve summary
   const sentences = scraped.articleText
     .split(/(?<=[.!?])\s+/)
     .filter((s) => s.length > 25 && !s.toLowerCase().includes('skip to') && !s.toLowerCase().includes('menu'));
@@ -301,91 +436,30 @@ function fallbackExtractor(scraped: ScrapedData): ExtractedObject {
     sentences.slice(0, 2).join(' ') ||
     `${name} is a celestial ${classification} documented in NASA planetary exploration archives.`;
 
-  return {
-    name,
-    classification,
-    summary,
-    images: scraped.images.slice(0, 4),
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Agent 3: Procedural Compiler (Google Gemini API with Heuristic Fallback)
-// ---------------------------------------------------------------------------
-
-export async function compileProceduralRenderState(
-  extracted: ExtractedObject,
-  apiKey?: string
-): Promise<RenderState> {
-  const geminiKey = apiKey || process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
-
-  if (geminiKey) {
-    try {
-      const prompt = `You are Agent 3 (Procedural Compiler) in a 3D WebGL engine pipeline.
-Given this celestial object:
-Name: "${extracted.name}"
-Classification: "${extracted.classification}"
-Summary: "${extracted.summary}"
-
-Compile procedural 3D parameters to render this object. Return strictly JSON with no markdown wrapping:
-{
-  "renderState": {
-    "baseColor": string (hex color code representing realistic surface albedo e.g. "#C4A482" for rocky asteroid, "#D97706" for Jupiter, "#38BDF8" for ice, "#FFAA00" for star),
-    "scale": number (relative positive scale float, e.g. 0.8 for small asteroid, 1.0 for terrestrial planet, 2.4 for gas giant/star),
-    "textureType": "rocky" | "gaseous" | "icy",
-    "hasRings": boolean (true only if planetary ring system exists, e.g. Saturn/Uranus)
-  }
-}`;
-
-      const res = await callGemini(geminiKey, prompt);
-      const parsed = parseJsonFromLlm(res);
-      const rs = parsed?.renderState || parsed;
-      if (rs && typeof rs.baseColor === 'string') {
-        const validTexture: TextureType = ['rocky', 'gaseous', 'icy'].includes(rs.textureType)
-          ? rs.textureType
-          : 'rocky';
-
-        return {
-          baseColor: sanitizeHexColor(rs.baseColor, '#8C827A'),
-          scale: typeof rs.scale === 'number' && rs.scale > 0 ? Number(rs.scale.toFixed(2)) : 1.0,
-          textureType: validTexture,
-          hasRings: Boolean(rs.hasRings),
-          tag: 'Illustrative', // Rule 2 Non-Negotiable
-        };
-      }
-    } catch (exc) {
-      console.warn('[Agent 3: Procedural Compiler] Gemini API call failed. Using deterministic compiler rules:', exc);
-    }
-  }
-
-  // Deterministic Fallback Compiler
-  return fallbackCompiler(extracted);
-}
-
-function fallbackCompiler(extracted: ExtractedObject): RenderState {
-  const name = extracted.name.toLowerCase();
-  const summary = extracted.summary.toLowerCase();
+  // 4. Procedural 3D renderState
+  const lowerName = name.toLowerCase();
+  const lowerSummary = summary.toLowerCase();
 
   let baseColor = '#8C827A';
   let scale = 1.0;
   let textureType: TextureType = 'rocky';
   let hasRings = false;
 
-  if (extracted.classification === 'star') {
+  if (classification === 'star') {
     baseColor = '#FFAE42';
     scale = 2.5;
     textureType = 'gaseous';
     hasRings = false;
-  } else if (extracted.classification === 'comet') {
+  } else if (classification === 'comet') {
     baseColor = '#B0E0E6';
     scale = 0.75;
     textureType = 'icy';
     hasRings = false;
-  } else if (extracted.classification === 'asteroid') {
-    if (summary.includes('metallic') || name.includes('psyche')) {
+  } else if (classification === 'asteroid') {
+    if (lowerSummary.includes('metallic') || lowerName.includes('psyche')) {
       baseColor = '#9E9E9E';
       scale = 0.95;
-    } else if (summary.includes('carbon') || summary.includes('bennu') || summary.includes('ryugu')) {
+    } else if (lowerSummary.includes('carbon') || lowerName.includes('bennu') || lowerName.includes('ryugu')) {
       baseColor = '#3A3A3C';
       scale = 0.85;
     } else {
@@ -395,27 +469,27 @@ function fallbackCompiler(extracted: ExtractedObject): RenderState {
     textureType = 'rocky';
     hasRings = false;
   } else {
-    // Planet / Dwarf Planet / Moon
-    if (name.includes('saturn') || summary.includes('rings')) {
+    // Planet / Moon / Dwarf Planet
+    if (lowerName.includes('saturn') || lowerSummary.includes('rings')) {
       baseColor = '#E2BF7D';
       scale = 2.2;
       textureType = 'gaseous';
       hasRings = true;
-    } else if (name.includes('jupiter') || summary.includes('gas giant')) {
+    } else if (lowerName.includes('jupiter') || lowerSummary.includes('gas giant')) {
       baseColor = '#C88B3A';
       scale = 2.4;
       textureType = 'gaseous';
       hasRings = false;
-    } else if (name.includes('neptune') || name.includes('uranus')) {
+    } else if (lowerName.includes('neptune') || lowerName.includes('uranus')) {
       baseColor = '#4B70DD';
       scale = 1.6;
       textureType = 'icy';
-      hasRings = name.includes('uranus');
-    } else if (name.includes('mars')) {
+      hasRings = lowerName.includes('uranus');
+    } else if (lowerName.includes('mars')) {
       baseColor = '#C1440E';
       scale = 0.85;
       textureType = 'rocky';
-    } else if (name.includes('europa') || name.includes('enceladus') || summary.includes('ice')) {
+    } else if (lowerName.includes('europa') || lowerName.includes('enceladus') || lowerSummary.includes('ice')) {
       baseColor = '#E0F2FE';
       scale = 0.8;
       textureType = 'icy';
@@ -427,69 +501,49 @@ function fallbackCompiler(extracted: ExtractedObject): RenderState {
   }
 
   return {
-    baseColor,
-    scale,
-    textureType,
-    hasRings,
-    tag: 'Illustrative', // Rule 2 Non-Negotiable
+    name,
+    classification,
+    summary,
+    images: scraped.images.slice(0, 4),
+    renderState: {
+      baseColor,
+      scale,
+      textureType,
+      hasRings,
+      tag: 'Illustrative', // Rule 2 Non-Negotiable
+    },
   };
 }
 
-function sanitizeHexColor(val: string, fallback: string): string {
-  if (/^#([0-9A-F]{3}){1,2}$/i.test(val)) {
-    return val.toUpperCase();
-  }
-  return fallback;
-}
-
 // ---------------------------------------------------------------------------
-// Google Gemini API Gateway
+// Backward Compatibility Adapters (extractObjectDetails, compileProceduralRenderState)
 // ---------------------------------------------------------------------------
 
-async function callGemini(apiKey: string, prompt: string, model = 'gemini-2.5-flash'): Promise<string> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseMimeType: 'application/json',
-        temperature: 0.1,
-      },
-    }),
-  });
-
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`Gemini API error ${res.status}: ${errText}`);
-  }
-
-  const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) {
-    throw new Error('Gemini API returned empty candidate content.');
-  }
-  return text;
+export async function extractObjectDetails(
+  scraped: ScrapedData,
+  apiKey?: string
+): Promise<ExtractedObject> {
+  const result = await subAgent2ExtractorAndCompiler(scraped, apiKey);
+  return {
+    name: result.name,
+    classification: result.classification,
+    summary: result.summary,
+    images: result.images,
+  };
 }
 
-function parseJsonFromLlm(text: string): any {
-  try {
-    const cleaned = text
-      .replace(/^```json\s*/i, '')
-      .replace(/^```\s*/i, '')
-      .replace(/\s*```$/i, '')
-      .trim();
-    return JSON.parse(cleaned);
-  } catch (err) {
-    // Attempt relaxed regex extraction
-    const match = text.match(/\{[\s\S]*\}/);
-    if (match) {
-      return JSON.parse(match[0]);
-    }
-    throw err;
-  }
+export async function compileProceduralRenderState(
+  extracted: ExtractedObject,
+  apiKey?: string
+): Promise<RenderState> {
+  const mockScraped: ScrapedData = {
+    url: '',
+    title: extracted.name,
+    articleText: extracted.summary,
+    images: extracted.images,
+  };
+  const result = await subAgent2ExtractorAndCompiler(mockScraped, apiKey);
+  return result.renderState;
 }
 
 // ---------------------------------------------------------------------------
@@ -501,21 +555,16 @@ export async function executeMultiAgentPipeline(
   apiKey?: string,
   timeoutMs = 12000
 ): Promise<NasaObjectPayload> {
-  // Step 1: Agent 1 (Scraper)
-  const scraped = await scrapeNasaUrl(targetUrl, timeoutMs);
+  // Step 1: Sub-Agent 1 (Scraper)
+  const scraped = await subAgent1Scraper(targetUrl, timeoutMs);
 
-  // Step 2: Agent 2 (Extractor)
-  const extracted = await extractObjectDetails(scraped, apiKey);
+  // Step 2 & 3: Sub-Agent 2 (Extractor & 3D Compiler)
+  const payload = await subAgent2ExtractorAndCompiler(scraped, apiKey);
 
-  // Step 3: Agent 3 (Procedural Compiler)
-  const renderState = await compileProceduralRenderState(extracted, apiKey);
+  // Guarantee Rule 2 compliance
+  if (!payload.renderState.tag) {
+    payload.renderState.tag = 'Illustrative';
+  }
 
-  // Step 4: Consolidated Bento-Grid Data Payload
-  return {
-    name: extracted.name,
-    classification: extracted.classification,
-    summary: extracted.summary,
-    images: extracted.images,
-    renderState,
-  };
+  return payload;
 }
