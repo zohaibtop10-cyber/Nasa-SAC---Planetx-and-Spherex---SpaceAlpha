@@ -23,6 +23,7 @@ interface SolarSystemSceneProps {
   selectedCandidateId: string | null;
   onSelectCandidate: (candidateId: string) => void;
   timeEpochRatio: number; // 0.0 to 1.0 (scrubbing along observation baseline)
+  sliderDay?: number; // 0 to 365 days timeline slider
 }
 
 export const SolarSystemScene: React.FC<SolarSystemSceneProps> = ({
@@ -30,6 +31,7 @@ export const SolarSystemScene: React.FC<SolarSystemSceneProps> = ({
   selectedCandidateId,
   onSelectCandidate,
   timeEpochRatio,
+  sliderDay,
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<SolarSystem | null>(null);
@@ -62,6 +64,13 @@ export const SolarSystemScene: React.FC<SolarSystemSceneProps> = ({
       );
     }
   }, [candidates, selectedCandidateId, timeEpochRatio, onSelectCandidate]);
+
+  // Listen to sliderDay updates and propagate to Three.js engine
+  useEffect(() => {
+    if (engineRef.current && sliderDay !== undefined) {
+      engineRef.current.setSliderDay(sliderDay);
+    }
+  }, [sliderDay]);
 
   const handleResetCamera = () => {
     if (engineRef.current) {

@@ -21,6 +21,8 @@ export const App: React.FC = () => {
   const [selectedFieldId, setSelectedFieldId] = useState<string>('field_asteroid_belt');
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
   const [panelViewMode, setPanelViewMode] = useState<'bento' | 'telemetry'>('bento');
+  const [timelineMode, setTimelineMode] = useState<'orbit' | 'parallax'>('orbit');
+  const [sliderDay, setSliderDay] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<'3d' | 'blink' | 'validation' | 'gallery' | 'about'>('3d');
   const [timeEpochRatio, setTimeEpochRatio] = useState<number>(0.0);
   const [currentScanIndex, setCurrentScanIndex] = useState<number>(0);
@@ -234,8 +236,10 @@ export const App: React.FC = () => {
                   setSelectedCandidateId(id);
                   setCurrentScanIndex(0);
                   setTimeEpochRatio(0.0);
+                  setSliderDay(0);
                 }}
                 timeEpochRatio={timeEpochRatio}
+                sliderDay={sliderDay}
               />
 
               {/* Dynamic Sub-Agent Intelligence Bento Panel / Telemetry */}
@@ -282,8 +286,8 @@ export const App: React.FC = () => {
                 </div>
               )}
 
-              {/* Distance Range UI for Unknown Objects OR Time Bar for Known Objects */}
-              {selectedCandidate?.distance_range ? (
+              {/* Bottom Timeline Controls */}
+              {timelineMode === 'parallax' && selectedCandidate?.distance_range ? (
                 <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 40 }}>
                   <DistanceRangeBar
                     candidate={selectedCandidate}
@@ -291,19 +295,67 @@ export const App: React.FC = () => {
                     onScanIndexChange={(idx) => {
                       setCurrentScanIndex(idx);
                       const total = Math.max(2, selectedCandidate.positions?.length || 2);
-                      setTimeEpochRatio(idx / (total - 1));
+                      const ratio = idx / (total - 1);
+                      setTimeEpochRatio(ratio);
+                      setSliderDay(ratio * 365);
                     }}
                     onReset={() => {
                       setCurrentScanIndex(0);
                       setTimeEpochRatio(0.0);
+                      setSliderDay(0);
                     }}
                   />
                 </div>
               ) : (
                 <TimeBar
+                  sliderDay={sliderDay}
+                  onChangeDay={(day) => {
+                    setSliderDay(day);
+                    setTimeEpochRatio(day / 365);
+                  }}
                   timeEpochRatio={timeEpochRatio}
-                  onChangeTimeRatio={setTimeEpochRatio}
+                  onChangeTimeRatio={(ratio) => {
+                    const r = typeof ratio === 'function' ? ratio(timeEpochRatio) : ratio;
+                    setTimeEpochRatio(r);
+                    setSliderDay(r * 365);
+                  }}
+                  activeObjectName={selectedCandidate?.match?.designation || selectedCandidate?.id}
+                  onReset={() => {
+                    setSliderDay(0);
+                    setTimeEpochRatio(0.0);
+                  }}
                 />
+              )}
+
+              {/* Mode Toggle between 365-Day Orbit Timeline & Parallax Scan Stepper */}
+              {selectedCandidate?.distance_range && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: timelineMode === 'parallax' ? '92px' : '90px',
+                    left: '24px',
+                    zIndex: 45,
+                    display: 'flex',
+                    gap: '6px',
+                  }}
+                >
+                  <button
+                    onClick={() => setTimelineMode(timelineMode === 'orbit' ? 'parallax' : 'orbit')}
+                    className="control"
+                    style={{
+                      fontFamily: 'monospace',
+                      fontSize: '11px',
+                      padding: '3px 8px',
+                      backgroundColor: 'rgba(17, 17, 19, 0.9)',
+                      backdropFilter: 'blur(8px)',
+                      borderColor: 'var(--color-hairline)',
+                      color: '#38BDF8',
+                    }}
+                    title="Toggle timeline mode"
+                  >
+                    Mode: {timelineMode === 'orbit' ? '365-Day Orbit Timeline' : 'Parallax Step Ruler'}
+                  </button>
+                </div>
               )}
             </div>
           </div>

@@ -188,6 +188,57 @@ async function runModelTests() {
   cosmos.update(0.16);
   assert.ok(cosmos.material.uniforms.uTime.value > initialTime, 'uTime uniform must increment on update');
 
+  // 4. TimeBar Orbit Interpolation Tests (36-point coordinate array and Vector3.lerp)
+  console.log('  4. Testing 36-point orbit trajectory and THREE.Vector3.lerp() interpolation...');
+  const orbitPoints: THREE.Vector3[] = [];
+  const semiMajorAxis = 20.0;
+  for (let k = 0; k < 36; k++) {
+    const theta = (k / 36) * Math.PI * 2;
+    orbitPoints.push(new THREE.Vector3(semiMajorAxis * Math.cos(theta), 0, semiMajorAxis * Math.sin(theta)));
+  }
+
+  assert.strictEqual(orbitPoints.length, 36, 'Orbit trajectory must have exactly 36 points');
+
+  // Helper function matching SolarSystem.ts lerp logic
+  const interpolateAtDay = (day: number) => {
+    const progress = (day % 365) / 365;
+    const floatIdx = progress * 36;
+    const idx0 = Math.floor(floatIdx) % 36;
+    const idx1 = (idx0 + 1) % 36;
+    const alpha = floatIdx - Math.floor(floatIdx);
+
+    const pos = new THREE.Vector3().copy(orbitPoints[idx0]).lerp(orbitPoints[idx1], alpha);
+    return { pos, idx0, idx1, alpha };
+  };
+
+  // Day 0: exactly at point 0
+  const day0 = interpolateAtDay(0);
+  assert.strictEqual(day0.idx0, 0);
+  assert.strictEqual(day0.alpha, 0);
+  assert.strictEqual(day0.pos.x, orbitPoints[0].x);
+  assert.strictEqual(day0.pos.z, orbitPoints[0].z);
+
+  // Day 182.5 (halfway through the year): halfway around the 36 points
+  const dayMid = interpolateAtDay(182.5);
+  assert.strictEqual(dayMid.idx0, 18);
+  assert.strictEqual(dayMid.alpha, 0);
+  assert.strictEqual(dayMid.pos.x, orbitPoints[18].x);
+
+  // Smooth intermediate day with fractional alpha
+  const day10 = interpolateAtDay(10);
+  assert.ok(day10.alpha > 0 && day10.alpha < 1, 'Alpha must be between 0 and 1');
+  const p0 = orbitPoints[day10.idx0];
+  const p1 = orbitPoints[day10.idx1];
+  const distToP0 = day10.pos.distanceTo(p0);
+  const distToP1 = day10.pos.distanceTo(p1);
+  const chordLen = p0.distanceTo(p1);
+  assert.ok(Math.abs((distToP0 + distToP1) - chordLen) < 1e-4, 'Interpolated position must lie on chord between p0 and p1');
+
+  // Day 365: completes the loop back to point 0
+  const day365 = interpolateAtDay(365);
+  assert.strictEqual(day365.pos.x, orbitPoints[0].x);
+  assert.strictEqual(day365.pos.z, orbitPoints[0].z);
+
   // Cleanup
   cosmos.dispose();
   asteroid.dispose();

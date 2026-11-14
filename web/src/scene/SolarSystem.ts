@@ -77,6 +77,12 @@ export class SolarSystem {
   private selectedCandidateId: string | null = null;
   private timeEpochRatio: number = 0.0;
 
+  // Active Object 36-Point Orbital Trajectory
+  private activeOrbitCoordinates: THREE.Vector3[] = [];
+  private activeOrbitLine: THREE.Line | null = null;
+  private sliderDay: number = 0;
+  private maxDays: number = 365;
+
   // Callbacks
   private onFpsUpdate?: (fps: number) => void;
   private onSelectCandidate?: (candidateId: string) => void;
@@ -365,14 +371,125 @@ export class SolarSystem {
     timeEpochRatio: number,
     onSelectCandidate?: (candidateId: string) => void
   ): void {
+    const candidateChanged = this.selectedCandidateId !== selectedCandidateId;
     this.candidatesData = candidates;
     this.selectedCandidateId = selectedCandidateId;
     this.timeEpochRatio = timeEpochRatio;
+    this.sliderDay = timeEpochRatio * this.maxDays;
     if (onSelectCandidate) {
       this.onSelectCandidate = onSelectCandidate;
     }
 
+    if (candidateChanged && selectedCandidateId) {
+      const activeCand = candidates.find((c) => c.id === selectedCandidateId);
+      if (activeCand) {
+        this.loadActiveObjectOrbit(activeCand);
+      } else {
+        this.clearActiveOrbit();
+      }
+    } else if (!selectedCandidateId) {
+      this.clearActiveOrbit();
+    }
+
     this.rebuildCandidates();
+  }
+
+  /**
+   * Generates or caches a 36-point orbital coordinate trajectory array for an active object.
+   * Computed once upon object selection or load, stored locally, and interpolated each frame.
+   * Does NOT fetch live JPL Horizons data on every frame.
+   */
+  public loadActiveObjectOrbit(cand: Candidate): THREE.Vector3[] {
+    const points: THREE.Vector3[] = [];
+    const count = 36; // strictly 36 coordinate points representing orbit over the year
+
+    // Extract nominal semi-major axis distance in AU
+    let nominalAu = 2.77;
+    if (cand.distance_range) {
+      nominalAu = (cand.distance_range.min_au + cand.distance_range.max_au) / 2.0;
+    } else if (cand.match?.designation) {
+      const d = cand.match.designation.toLowerCase();
+      if (d.includes('ceres')) nominalAu = 2.77;
+      else if (d.includes('vesta')) nominalAu = 2.36;
+      else if (d.includes('bennu')) nominalAu = 1.13;
+      else if (d.includes('psyche')) nominalAu = 2.92;
+      else if (d.includes('halley')) nominalAu = 17.8;
+      else if (d.includes('jupiter')) nominalAu = 5.2;
+    }
+
+    // Deterministic Keplerian orbit parameters based on candidate ID hash
+    const hash = cand.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+    const eccentricity = 0.08 + (hash % 15) * 0.01;
+    const inclinationRad = (((hash % 20) + 4) * Math.PI) / 180;
+    const argPerihelion = ((hash % 360) * Math.PI) / 180;
+
+    for (let k = 0; k < count; k++) {
+      const trueAnomaly = (k / count) * Math.PI * 2;
+      // Keplerian orbit radius: r = a(1 - e^2) / (1 + e * cos(nu))
+      const rAu = (nominalAu * (1 - eccentricity * eccentricity)) / (1 + eccentricity * Math.cos(trueAnomaly));
+      const rScene = this.auToScene(rAu);
+
+      // Coordinate in orbital plane
+      const xOrb = rScene * Math.cos(trueAnomaly + argPerihelion);
+      const zOrb = rScene * Math.sin(trueAnomaly + argPerihelion);
+
+      // Rotate by inclination around X-axis
+      const x = xOrb;
+      const y = zOrb * Math.sin(inclinationRad);
+      const z = zOrb * Math.cos(inclinationRad);
+
+      points.push(new THREE.Vector3(x, y, z));
+    }
+
+    this.activeOrbitCoordinates = points;
+    this.rebuildActiveOrbitLine();
+    return points;
+  }
+
+  public clearActiveOrbit(): void {
+    this.activeOrbitCoordinates = [];
+    if (this.activeOrbitLine) {
+      this.scene.remove(this.activeOrbitLine);
+      this.activeOrbitLine.geometry.dispose();
+      (this.activeOrbitLine.material as THREE.Material).dispose();
+      this.activeOrbitLine = null;
+    }
+  }
+
+  private rebuildActiveOrbitLine(): void {
+    if (this.activeOrbitLine) {
+      this.scene.remove(this.activeOrbitLine);
+      this.activeOrbitLine.geometry.dispose();
+      (this.activeOrbitLine.material as THREE.Material).dispose();
+      this.activeOrbitLine = null;
+    }
+
+    if (this.activeOrbitCoordinates.length !== 36) return;
+
+    // Build closed loop of 36 points + 1 returning to start
+    const closedPoints = [...this.activeOrbitCoordinates, this.activeOrbitCoordinates[0].clone()];
+    const geo = new THREE.BufferGeometry().setFromPoints(closedPoints);
+    const mat = new THREE.LineDashedMaterial({
+      color: 0xff6b3d,
+      dashSize: 2.0,
+      gapSize: 1.5,
+      transparent: true,
+      opacity: 0.65,
+    });
+    this.activeOrbitLine = new THREE.Line(geo, mat);
+    this.activeOrbitLine.computeLineDistances();
+    this.activeOrbitLine.userData = { tag: 'Illustrative', type: 'activeOrbit' };
+    this.scene.add(this.activeOrbitLine);
+  }
+
+  public setSliderDay(day: number, maxDays: number = 365): void {
+    this.sliderDay = Math.max(0, Math.min(maxDays, day));
+    this.maxDays = maxDays;
+    this.timeEpochRatio = this.sliderDay / maxDays;
+  }
+
+  public getActiveOrbitPoints(): THREE.Vector3[] {
+    return this.activeOrbitCoordinates;
   }
 
   private rebuildCandidates(): void {
@@ -439,7 +556,15 @@ export class SolarSystem {
         this.uncertaintySegments.set(cand.id, segLine);
       }
 
-      const pos3d = this.radecToCartesian(ra, dec, nominalDistanceAu);
+      let pos3d = this.radecToCartesian(ra, dec, nominalDistanceAu);
+      if (isSelected && this.activeOrbitCoordinates.length === 36) {
+        const progress = (this.sliderDay % this.maxDays) / this.maxDays;
+        const floatIdx = progress * 36;
+        const idx0 = Math.floor(floatIdx) % 36;
+        const idx1 = (idx0 + 1) % 36;
+        const alpha = floatIdx - Math.floor(floatIdx);
+        pos3d = new THREE.Vector3().copy(this.activeOrbitCoordinates[idx0]).lerp(this.activeOrbitCoordinates[idx1], alpha);
+      }
       const geo = createProceduralAsteroidGeometry(
         isUnknown ? 1.4 : 1.1,
         2,
@@ -549,6 +674,14 @@ export class SolarSystem {
         child.computeLineDistances();
       }
     });
+
+    // Recompute 36-point trajectory on new scale if active
+    if (this.selectedCandidateId) {
+      const activeCand = this.candidatesData.find((c) => c.id === this.selectedCandidateId);
+      if (activeCand) {
+        this.loadActiveObjectOrbit(activeCand);
+      }
+    }
 
     // Rebuild candidates on new scale
     this.rebuildCandidates();
@@ -798,6 +931,23 @@ export class SolarSystem {
         mesh.rotation.x += delta * 0.2;
       });
 
+      // Smoothly animate active 3D object position along its 36-point orbit using THREE.Vector3.lerp()
+      if (this.selectedCandidateId && this.activeOrbitCoordinates.length === 36) {
+        const activeMesh = this.candidateMeshes.get(this.selectedCandidateId);
+        if (activeMesh) {
+          const progress = (this.sliderDay % this.maxDays) / this.maxDays;
+          const floatIdx = progress * 36;
+          const idx0 = Math.floor(floatIdx) % 36;
+          const idx1 = (idx0 + 1) % 36;
+          const alpha = floatIdx - Math.floor(floatIdx);
+
+          const p0 = this.activeOrbitCoordinates[idx0];
+          const p1 = this.activeOrbitCoordinates[idx1];
+
+          activeMesh.position.copy(p0).lerp(p1, alpha);
+        }
+      }
+
       // Update background cosmos procedural scintillation
       if (this.backgroundCosmos) {
         this.backgroundCosmos.update(delta);
@@ -829,6 +979,13 @@ export class SolarSystem {
 
     this.controls.dispose();
     this.renderer.dispose();
+
+    if (this.activeOrbitLine) {
+      this.scene.remove(this.activeOrbitLine);
+      this.activeOrbitLine.geometry.dispose();
+      (this.activeOrbitLine.material as THREE.Material).dispose();
+      this.activeOrbitLine = null;
+    }
 
     if (this.backgroundCosmos) {
       this.backgroundCosmos.dispose();
