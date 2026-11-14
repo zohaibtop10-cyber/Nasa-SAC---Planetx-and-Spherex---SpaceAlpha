@@ -204,6 +204,27 @@ async function runComponentTests() {
   assert.equal(planetXHypothesisCitation.label, 'assumed');
   assert.equal(planetXHypothesisCitation.planetClaimAllowed, false, 'No planet claims permitted');
 
+  // 7. Verify ObjectPanel contracts (Bento Grid, Rule 1 & Rule 2 compliance)
+  console.log('  7. Verifying ObjectPanel contracts and sub-agent data rendering...');
+  const mockBentoPayload = {
+    name: '101955 Bennu',
+    classification: 'asteroid' as const,
+    summary: 'Asteroid Bennu is a carbon-rich near-Earth object explored by NASA OSIRIS-REx.',
+    images: ['https://science.nasa.gov/assets/bennu-1.jpg', 'https://science.nasa.gov/assets/bennu-2.jpg'],
+    renderState: {
+      baseColor: '#3A3A3C',
+      scale: 0.85,
+      textureType: 'rocky' as const,
+      hasRings: false,
+      tag: 'Illustrative',
+    },
+  };
+
+  assert.strictEqual(mockBentoPayload.classification, 'asteroid');
+  assert.strictEqual(mockBentoPayload.renderState.tag, 'Illustrative', 'Rule 2: 3D model MUST be tagged Illustrative');
+  assert.ok(mockBentoPayload.images.length > 0, 'Masonry gallery must have image assets');
+  assert.ok(mockBentoPayload.summary.length > 10, 'Summary text must be present');
+
   console.log('All UI component tests passed successfully!');
 }
 

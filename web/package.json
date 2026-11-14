@@ -10,6 +10,7 @@
     "test": "tsx src/data/data.test.ts && tsx src/scene/models/models.test.ts && tsx src/ui/components/components.test.ts && tsx src/api/fetchNasaObjectWorkflow.test.ts"
   },
   "dependencies": {
+    "framer-motion": "^14.14.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "three": "^0.170.0"
@@ -20,6 +21,9 @@
     "@types/react-dom": "^18.3.1",
     "@types/three": "^0.170.0",
     "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.6.2",
+    "postcss": "^8.5.33",
+    "tailwindcss": "^3.4.19",
     "tsx": "^4.23.15",
     "typescript": "^5.6.3",
     "vite": "^6.0.1"

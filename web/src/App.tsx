@@ -8,6 +8,7 @@ import { FeedPanel } from './ui/components/FeedPanel';
 import { Header } from './ui/components/Header';
 import { ModelGallery } from './ui/components/ModelGallery';
 import { ObjectPage } from './ui/components/ObjectPage';
+import { ObjectPanel } from './ui/components/ObjectPanel';
 import { ObjectSidePanel } from './ui/components/ObjectSidePanel';
 import { SkyBlinkViewer } from './ui/components/SkyBlinkViewer';
 import { TimeBar } from './ui/components/TimeBar';
@@ -19,6 +20,7 @@ export const App: React.FC = () => {
   const [releases, setReleases] = useState<Release[]>([]);
   const [selectedFieldId, setSelectedFieldId] = useState<string>('field_asteroid_belt');
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
+  const [panelViewMode, setPanelViewMode] = useState<'bento' | 'telemetry'>('bento');
   const [activeTab, setActiveTab] = useState<'3d' | 'blink' | 'validation' | 'gallery' | 'about'>('3d');
   const [timeEpochRatio, setTimeEpochRatio] = useState<number>(0.0);
   const [currentScanIndex, setCurrentScanIndex] = useState<number>(0);
@@ -236,11 +238,49 @@ export const App: React.FC = () => {
                 timeEpochRatio={timeEpochRatio}
               />
 
-              {/* Object Telemetry Side Panel */}
-              <ObjectSidePanel
-                candidate={selectedCandidate}
-                onClose={() => setSelectedCandidateId(null)}
-              />
+              {/* Dynamic Sub-Agent Intelligence Bento Panel / Telemetry */}
+              {panelViewMode === 'bento' ? (
+                <ObjectPanel
+                  activeObject={selectedCandidate}
+                  onClose={() => setSelectedCandidateId(null)}
+                />
+              ) : (
+                <ObjectSidePanel
+                  candidate={selectedCandidate}
+                  onClose={() => setSelectedCandidateId(null)}
+                />
+              )}
+
+              {/* Panel Mode Switcher Pill */}
+              {selectedCandidate && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 16,
+                    right: 450,
+                    zIndex: 30,
+                    display: 'flex',
+                    gap: 6,
+                  }}
+                  className="hidden md:flex"
+                >
+                  <button
+                    onClick={() => setPanelViewMode(panelViewMode === 'bento' ? 'telemetry' : 'bento')}
+                    className="control"
+                    style={{
+                      fontFamily: 'monospace',
+                      fontSize: '11px',
+                      padding: '4px 10px',
+                      backgroundColor: 'rgba(17, 17, 19, 0.85)',
+                      backdropFilter: 'blur(8px)',
+                      borderColor: 'var(--color-hairline)',
+                    }}
+                    title="Toggle between AI Bento Grid and Raw Telemetry"
+                  >
+                    View: {panelViewMode === 'bento' ? 'AI Bento Grid' : 'Raw Telemetry'}
+                  </button>
+                </div>
+              )}
 
               {/* Distance Range UI for Unknown Objects OR Time Bar for Known Objects */}
               {selectedCandidate?.distance_range ? (

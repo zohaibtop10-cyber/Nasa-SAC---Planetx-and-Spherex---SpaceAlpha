@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
   /* Clean Studio Design Tokens */
   --color-bg: #0A0A0B;

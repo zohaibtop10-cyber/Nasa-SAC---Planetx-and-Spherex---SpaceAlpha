@@ -237,8 +237,6 @@ ${JSON.stringify(scraped.images)}`;
 }
 
 function fallbackExtractor(scraped: ScrapedData): ExtractedObject {
-  const text = (scraped.title + ' ' + scraped.articleText).toLowerCase();
-
   // Name resolution
   let name = scraped.title || 'NASA Celestial Object';
   const nameMatch = scraped.title.match(/(?:about|overview|mission to|exploring|target)?\s*([A-Z0-9\s\-_–—]+)/i);
