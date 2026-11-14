@@ -623,7 +623,6 @@ def main():
     destinations = [
         Path("data"),
         Path("web/public/data"),
-        Path("web/public/data/mock"),
     ]
     export_production_catalogs(destinations)
 

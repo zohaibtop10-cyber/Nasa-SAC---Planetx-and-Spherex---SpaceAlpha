@@ -225,6 +225,7 @@ def triage_candidate(
     labels: Dict[str, str] = {
         "confidence": "derived",
         "colour_index": "measured",
+        "positions": "measured",
         "positions.ra": "measured",
         "positions.dec": "measured",
         "positions.err": "derived",

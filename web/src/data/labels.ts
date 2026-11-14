@@ -45,10 +45,15 @@ export function labelFor(candidate: Candidate, key: string): LabelType {
 
   // 2. Normalized aliases
   const aliasMap: Record<string, string[]> = {
+    'positions': ['positions.ra', 'positions.dec', 'positions.err'],
+    'positions.ra': ['positions'],
+    'positions.dec': ['positions'],
+    'positions.err': ['positions'],
     'distance_min_au': ['distance_range.min_au', 'distance_range'],
     'distance_range.min_au': ['distance_min_au', 'distance_range'],
     'distance_max_au': ['distance_range.max_au', 'distance_range'],
     'distance_range.max_au': ['distance_max_au', 'distance_range'],
+    'distance_range': ['distance_min_au', 'distance_range.min_au'],
     'separation_arcsec': ['match.separation_arcsec', 'match'],
     'match.separation_arcsec': ['separation_arcsec', 'match'],
   };

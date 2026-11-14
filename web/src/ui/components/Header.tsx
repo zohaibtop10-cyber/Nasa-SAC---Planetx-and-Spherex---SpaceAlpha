@@ -7,6 +7,7 @@ interface HeaderProps {
   onSelectField: (fieldId: string) => void;
   activeTab: '3d' | 'blink' | 'validation' | 'gallery';
   onChangeTab: (tab: '3d' | 'blink' | 'validation' | 'gallery') => void;
+  latestRelease?: string;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -15,6 +16,7 @@ export const Header: React.FC<HeaderProps> = ({
   onSelectField,
   activeTab,
   onChangeTab,
+  latestRelease,
 }) => {
   return (
     <header
@@ -79,7 +81,7 @@ export const Header: React.FC<HeaderProps> = ({
             }}
           />
           <span style={{ fontFamily: 'monospace', fontSize: '10px', color: '#10B981' }}>
-            QR2 LIVE
+            {latestRelease ? `${latestRelease} LIVE` : 'QR2 LIVE'}
           </span>
         </div>
       </div>

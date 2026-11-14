@@ -21,8 +21,6 @@
       "verdict": "unknown",
       "reason_chain": [
         "Infrared point source detected at 7068.5 sigma across 2 observation epochs",
-        "JPL Small-Body query note: query_known_asteroids() got an unexpected keyword argument 'fov_deg'",
-        "Gaia catalog query note: match_gaia_star() got an unexpected keyword argument 'obs_time_str'",
         "Cross-matched against JPL Small-Body Ident (5.0\" tolerance): no cataloged solar system body",
         "Cross-matched against Gaia DR3 (3.0\" tolerance): no stellar counterpart",
         "Apparent angular shift of 65.46\" observed over 0.2-day SPHEREx survey cadence",
@@ -53,6 +51,7 @@
       "labels": {
         "confidence": "derived",
         "colour_index": "measured",
+        "positions": "measured",
         "positions.ra": "measured",
         "positions.dec": "measured",
         "positions.err": "derived",

@@ -13,7 +13,7 @@ import { clearDataCache, loadCandidates, loadFields, loadReleases } from './load
 import { Candidate } from './types';
 
 const currentDir = resolve(fileURLToPath(import.meta.url), '..');
-const mockFsBase = resolve(currentDir, '../../public/data/mock');
+const publicFsBase = resolve(currentDir, '../../public/data');
 
 const originalFetch = globalThis.fetch;
 let fetchCallCount = 0;
@@ -22,7 +22,7 @@ globalThis.fetch = (async (input: RequestInfo | URL) => {
   fetchCallCount++;
   const urlStr = input.toString();
   const filename = urlStr.split('/').pop();
-  const filePath = resolve(mockFsBase, filename ?? '');
+  const filePath = resolve(publicFsBase, filename ?? '');
 
   try {
     const text = readFileSync(filePath, 'utf-8');
@@ -51,23 +51,23 @@ async function runTests() {
   clearDataCache();
   fetchCallCount = 0;
 
-  const candidates1 = await loadCandidates({ baseUrl: '/data/mock' });
+  const candidates1 = await loadCandidates({ baseUrl: '/data' });
   assert.ok(candidates1.length >= 2, 'Should load at least 2 candidates');
   assert.equal(fetchCallCount, 1, 'Should have made 1 fetch call');
 
   // Second call must return from memory cache (fetchCallCount stays 1)
-  const candidates2 = await loadCandidates({ baseUrl: '/data/mock' });
+  const candidates2 = await loadCandidates({ baseUrl: '/data' });
   assert.equal(candidates2.length, candidates1.length);
   assert.equal(fetchCallCount, 1, 'Second call must return from in-memory cache without new fetch');
   assert.equal(candidates1, candidates2, 'Cached reference should be identical');
 
   // Test loadFields
-  const fields = await loadFields({ baseUrl: '/data/mock' });
+  const fields = await loadFields({ baseUrl: '/data' });
   assert.ok(fields.length >= 2, 'Should load at least 2 fields');
   assert.equal(fetchCallCount, 2, 'Fetch call count should now be 2');
 
   // Test loadReleases
-  const releases = await loadReleases({ baseUrl: '/data/mock' });
+  const releases = await loadReleases({ baseUrl: '/data' });
   assert.equal(releases.length, 1, 'Should load 1 release');
   assert.equal(fetchCallCount, 3, 'Fetch call count should now be 3');
 

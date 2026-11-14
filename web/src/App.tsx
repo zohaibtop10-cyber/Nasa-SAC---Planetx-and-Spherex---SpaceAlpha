@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { loadCandidates, loadFields } from './data';
-import { Candidate, Field } from './data/types';
+import { loadCandidates, loadFields, loadReleases } from './data';
+import { Candidate, Field, Release } from './data/types';
 import { SolarSystemScene } from './scene/SolarSystemScene';
 import { DistanceRangeBar } from './ui/components/DistanceRangeBar';
 import { FeedPanel } from './ui/components/FeedPanel';
@@ -15,6 +15,7 @@ import { ValidationTab } from './ui/components/ValidationTab';
 export const App: React.FC = () => {
   const [fields, setFields] = useState<Field[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [releases, setReleases] = useState<Release[]>([]);
   const [selectedFieldId, setSelectedFieldId] = useState<string>('field_asteroid_belt');
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'3d' | 'blink' | 'validation' | 'gallery'>('3d');
@@ -51,12 +52,14 @@ export const App: React.FC = () => {
     async function initData() {
       try {
         setLoading(true);
-        const [fieldData, candidateData] = await Promise.all([
+        const [fieldData, candidateData, releaseData] = await Promise.all([
           loadFields({ baseUrl: '/data' }),
           loadCandidates({ baseUrl: '/data' }),
+          loadReleases({ baseUrl: '/data' }),
         ]);
         setFields(fieldData);
         setCandidates(candidateData);
+        setReleases(releaseData);
         if (fieldData.length > 0) {
           setSelectedFieldId(fieldData[0].id);
         }
@@ -145,6 +148,7 @@ export const App: React.FC = () => {
             window.location.hash = '#/';
             setActiveTab(tab);
           }}
+          latestRelease={releases[0]?.release_batch}
         />
         <ObjectPage
           candidateId={objectRouteId}
@@ -177,6 +181,7 @@ export const App: React.FC = () => {
         onSelectField={setSelectedFieldId}
         activeTab={activeTab}
         onChangeTab={setActiveTab}
+        latestRelease={releases[0]?.release_batch}
       />
 
       {/* Main Content View */}

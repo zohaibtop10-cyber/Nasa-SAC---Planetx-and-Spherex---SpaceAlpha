@@ -134,6 +134,8 @@ def query_known_asteroids(
 
     # Format observation time to 'YYYY-MM-DD HH:MM:SS'
     clean_time = obs_time.replace("T", " ").replace("Z", "").strip()
+    if "." in clean_time:
+        clean_time = clean_time.split(".")[0]
     if len(clean_time) == 10:
         clean_time = f"{clean_time} 00:00:00"
 
