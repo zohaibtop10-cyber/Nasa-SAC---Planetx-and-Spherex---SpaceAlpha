@@ -19,11 +19,20 @@ export interface WorkspaceState {
   searchStatusMessage: string | null;
   error: string | null;
 
+  // Temporal State (Scan Epochs & Interpolation)
+  currentDate: string; // ISO format e.g. "2026-04-12T02:15:00Z"
+  earliestDate: string; // "2026-04-12T02:15:00Z"
+  latestDate: string; // "2026-10-20T00:00:00Z"
+  timeEpochRatio: number; // 0.0 to 1.0
+
   // Actions
   setSearching: (isSearching: boolean, statusMessage?: string | null) => void;
   setError: (error: string | null) => void;
   addExploredObject: (result: ExploreObjectResult) => Candidate;
   setActiveExploredObject: (result: ExploreObjectResult | null) => void;
+  setCurrentDate: (date: string | Date) => void;
+  setTimeEpochRatio: (ratio: number) => void;
+  setDateRange: (earliest: string, latest: string) => void;
 }
 
 /**
@@ -118,6 +127,12 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   searchStatusMessage: null,
   error: null,
 
+  // Default historical scan epochs from releases.json and candidates.json
+  currentDate: '2026-04-12T02:15:00Z',
+  earliestDate: '2026-04-12T02:15:00Z',
+  latestDate: '2026-10-20T00:00:00Z',
+  timeEpochRatio: 0.0,
+
   setSearching: (isSearching, statusMessage = null) =>
     set({ isSearching, searchStatusMessage: statusMessage }),
 
@@ -137,4 +152,28 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   },
 
   setActiveExploredObject: (result) => set({ activeExploredObject: result }),
+
+  setCurrentDate: (dateInput) => {
+    const isoString = dateInput instanceof Date ? dateInput.toISOString() : new Date(dateInput).toISOString();
+    set((state) => {
+      const t = new Date(isoString).getTime();
+      const tMin = new Date(state.earliestDate).getTime();
+      const tMax = new Date(state.latestDate).getTime();
+      const ratio = tMax > tMin ? Math.max(0.0, Math.min(1.0, (t - tMin) / (tMax - tMin))) : 0.0;
+      return { currentDate: isoString, timeEpochRatio: ratio };
+    });
+  },
+
+  setTimeEpochRatio: (ratio) => {
+    const clamped = Math.max(0.0, Math.min(1.0, ratio));
+    set((state) => {
+      const tMin = new Date(state.earliestDate).getTime();
+      const tMax = new Date(state.latestDate).getTime();
+      const interpolatedTime = new Date(tMin + clamped * (tMax - tMin)).toISOString();
+      return { timeEpochRatio: clamped, currentDate: interpolatedTime };
+    });
+  },
+
+  setDateRange: (earliest, latest) =>
+    set({ earliestDate: earliest, latestDate: latest }),
 }));

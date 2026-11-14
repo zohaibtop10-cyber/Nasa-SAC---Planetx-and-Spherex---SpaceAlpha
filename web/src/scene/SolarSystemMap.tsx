@@ -136,6 +136,154 @@ export function cartesianToSpherical(
 }
 
 // ---------------------------------------------------------------------------
+// 2. Object Multi-Epoch Interpolation (The Math) & Parallax Uncertainty
+// ---------------------------------------------------------------------------
+
+export interface InterpolatedCandidateState {
+  position: THREE.Vector3;
+  ra: number;
+  dec: number;
+  distanceAu: number;
+  minPoint?: THREE.Vector3;
+  maxPoint?: THREE.Vector3;
+  currentMinAu: number;
+  currentMaxAu: number;
+  alpha: number;
+}
+
+/**
+ * Calculates intermediate 3D position and parallax uncertainty bounds for a candidate
+ * at target timestamp using THREE.Vector3.lerp().
+ */
+export function interpolateCandidateState(
+  candidate: Candidate,
+  targetTimeMs: number,
+  mode: ScaleMode = 'dual'
+): InterpolatedCandidateState {
+  const positions = candidate.positions || [];
+
+  // Nominal distance
+  let nominalDistAu = 2.5;
+  let currentMinAu = 2.0;
+  let currentMaxAu = 3.0;
+
+  if (candidate.distance_range) {
+    currentMinAu = candidate.distance_range.min_au;
+    currentMaxAu = candidate.distance_range.max_au;
+    nominalDistAu = (currentMinAu + currentMaxAu) / 2.0;
+  } else if ((candidate as any).coordinates?.distance_au) {
+    nominalDistAu = (candidate as any).coordinates.distance_au;
+    currentMinAu = nominalDistAu * 0.95;
+    currentMaxAu = nominalDistAu * 1.05;
+  }
+
+  if (positions.length === 0) {
+    const pos = sphericalToCartesian(0, 0, nominalDistAu, mode);
+    return {
+      position: pos,
+      ra: 0,
+      dec: 0,
+      distanceAu: nominalDistAu,
+      currentMinAu,
+      currentMaxAu,
+      alpha: 0,
+    };
+  }
+
+  // Parse recorded epoch timestamps
+  const parsed = positions.map((p) => ({
+    timeMs: new Date(p.time).getTime(),
+    ra: p.ra,
+    dec: p.dec,
+  }));
+  parsed.sort((a, b) => a.timeMs - b.timeMs);
+
+  let posBefore = parsed[0];
+  let posAfter = parsed[parsed.length - 1];
+  let alpha = 0.0;
+
+  const tFirst = parsed[0].timeMs;
+  const tLast = parsed[parsed.length - 1].timeMs;
+
+  if (targetTimeMs <= tFirst) {
+    posBefore = parsed[0];
+    posAfter = parsed[0];
+    alpha = 0.0;
+  } else if (targetTimeMs >= tLast) {
+    posBefore = parsed[parsed.length - 1];
+    posAfter = parsed[parsed.length - 1];
+    alpha = 1.0;
+  } else {
+    // Find recorded positions immediately before and after target timestamp
+    for (let i = 0; i < parsed.length - 1; i++) {
+      if (targetTimeMs >= parsed[i].timeMs && targetTimeMs <= parsed[i + 1].timeMs) {
+        posBefore = parsed[i];
+        posAfter = parsed[i + 1];
+        const span = posAfter.timeMs - posBefore.timeMs;
+        alpha = span > 0 ? (targetTimeMs - posBefore.timeMs) / span : 0.0;
+        break;
+      }
+    }
+  }
+
+  // Exact intermediate ra and dec
+  const intermediateRa = posBefore.ra + (posAfter.ra - posBefore.ra) * alpha;
+  const intermediateDec = posBefore.dec + (posAfter.dec - posBefore.dec) * alpha;
+
+  // Calculate 3D Cartesian vectors immediately before and after
+  const vBefore = sphericalToCartesian(posBefore.ra, posBefore.dec, nominalDistAu, mode);
+  const vAfter = sphericalToCartesian(posAfter.ra, posAfter.dec, nominalDistAu, mode);
+
+  // Exact intermediate X, Y, Z calculated using THREE.Vector3.lerp()
+  const interpolatedPos = vBefore.clone().lerp(vAfter, alpha);
+
+  // 4. Parallax Uncertainty Reduction:
+  // If the object is an 'Unknown' (rendered as a distance line segment),
+  // physically shrink the 3D line segment as time progresses
+  let minPoint: THREE.Vector3 | undefined;
+  let maxPoint: THREE.Vector3 | undefined;
+
+  if (candidate.distance_range) {
+    const scanRanges = candidate.distance_range.scan_ranges;
+    const progress = tLast > tFirst
+      ? Math.min(1.0, Math.max(0.0, (targetTimeMs - tFirst) / (tLast - tFirst)))
+      : alpha;
+
+    if (scanRanges && scanRanges.length >= 2) {
+      // Historical multi-scan brackets:
+      // Scan 1: initial broad bracket (e.g. 12.0 to 33.3 AU)
+      // Scan 2: narrowed bracket (e.g. 17.2 to 22.2 AU)
+      const s0 = scanRanges[0];
+      const s1 = scanRanges[scanRanges.length - 1];
+      currentMinAu = s0.min_au + (s1.min_au - s0.min_au) * progress;
+      currentMaxAu = s0.max_au + (s1.max_au - s0.max_au) * progress;
+    } else {
+      // Monotonic parallax shrinkage (narrows error margin by up to 55%)
+      const initialSpan = candidate.distance_range.max_au - candidate.distance_range.min_au;
+      const narrowedSpan = initialSpan * (1.0 - 0.55 * progress);
+      const mid = (candidate.distance_range.min_au + candidate.distance_range.max_au) / 2.0;
+      currentMinAu = mid - narrowedSpan / 2.0;
+      currentMaxAu = mid + narrowedSpan / 2.0;
+    }
+
+    minPoint = sphericalToCartesian(intermediateRa, intermediateDec, currentMinAu, mode);
+    maxPoint = sphericalToCartesian(intermediateRa, intermediateDec, currentMaxAu, mode);
+  }
+
+  return {
+    position: interpolatedPos,
+    ra: intermediateRa,
+    dec: intermediateDec,
+    distanceAu: nominalDistAu,
+    minPoint,
+    maxPoint,
+    currentMinAu,
+    currentMaxAu,
+    alpha,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // 3. Planetary Catalog & Reference Structures
 // ---------------------------------------------------------------------------
 
@@ -557,40 +705,29 @@ export const SolarSystemMap: React.FC<SolarSystemMapProps> = ({
   }, [activeScaleMode, showPlanetXZone]);
 
   // -------------------------------------------------------------------------
-  // Candidate & Explored Objects Placement
+  // 3. Object Multi-Epoch Interpolation (The Math) & Parallax Uncertainty
   // -------------------------------------------------------------------------
+  const storeCurrentDate = useWorkspaceStore((state) => state.currentDate);
+  const storeTimeEpochRatio = useWorkspaceStore((state) => state.timeEpochRatio);
+  const storeEarliestDate = useWorkspaceStore((state) => state.earliestDate);
+  const storeLatestDate = useWorkspaceStore((state) => state.latestDate);
+
+  const effectiveRatio = timeEpochRatio || storeTimeEpochRatio;
+
+  const currentTimestampMs = useMemo(() => {
+    const tMin = new Date(storeEarliestDate).getTime();
+    const tMax = new Date(storeLatestDate).getTime();
+    return tMin + effectiveRatio * (tMax - tMin);
+  }, [storeEarliestDate, storeLatestDate, effectiveRatio]);
+
   useEffect(() => {
     const candidatesGroup = candidatesGroupRef.current;
     candidatesGroup.clear();
     candidateObjectMapRef.current.clear();
 
     mergedCandidates.forEach((cand) => {
-      // Extract coordinates: RA, Dec, Distance (AU)
-      let ra = 0;
-      let dec = 0;
-      let distAu = 2.5;
-
-      if (cand.positions && cand.positions.length > 0) {
-        // Interpolate or scrub along multi-epoch positions
-        const pIdx = Math.min(
-          cand.positions.length - 1,
-          Math.floor(timeEpochRatio * (cand.positions.length - 1))
-        );
-        const p = cand.positions[pIdx];
-        ra = p.ra;
-        dec = p.dec;
-      }
-
-      if (cand.distance_range) {
-        distAu = (cand.distance_range.min_au + cand.distance_range.max_au) / 2.0;
-      } else if (cand.coordinates?.distance_au) {
-        distAu = cand.coordinates.distance_au;
-        ra = cand.coordinates.ra ?? ra;
-        dec = cand.coordinates.dec ?? dec;
-      }
-
-      // Convert spherical coordinates to Three.js Cartesian position
-      const cartesianPos = sphericalToCartesian(ra, dec, distAu, activeScaleMode);
+      // Interpolate exact 3D position using THREE.Vector3.lerp() & compute narrowed parallax bounds
+      const interp = interpolateCandidateState(cand, currentTimestampMs, activeScaleMode);
 
       // Procedural 3D Mesh Generation
       const proceduralData: ProceduralDataInput = {
@@ -606,28 +743,26 @@ export const SolarSystemMap: React.FC<SolarSystemMapProps> = ({
 
       const meshGroup = generateProceduralCelestialBody(
         proceduralData,
-        cand.distance_range
-          ? sphericalToCartesian(ra, dec, cand.distance_range.min_au, activeScaleMode)
-          : undefined,
-        cand.distance_range
-          ? sphericalToCartesian(ra, dec, cand.distance_range.max_au, activeScaleMode)
-          : undefined
+        interp.minPoint,
+        interp.maxPoint
       );
 
-      meshGroup.position.copy(cartesianPos);
+      meshGroup.position.copy(interp.position);
       meshGroup.userData = {
         candidateId: cand.id,
         name: cand.match?.designation || cand.id,
         tag: 'Illustrative',
-        distanceAu: distAu,
-        ra,
-        dec,
+        distanceAu: interp.distanceAu,
+        currentMinAu: interp.currentMinAu,
+        currentMaxAu: interp.currentMaxAu,
+        ra: interp.ra,
+        dec: interp.dec,
       };
 
       candidatesGroup.add(meshGroup);
       candidateObjectMapRef.current.set(cand.id, meshGroup);
     });
-  }, [mergedCandidates, activeScaleMode, timeEpochRatio, sliderDay]);
+  }, [mergedCandidates, activeScaleMode, currentTimestampMs, sliderDay]);
 
   // -------------------------------------------------------------------------
   // Auto-Select and Focus on newly explored objects from OmniSearch
@@ -789,7 +924,7 @@ export const SolarSystemMap: React.FC<SolarSystemMapProps> = ({
             borderRadius: '2px',
           }}
         >
-          Telemetry: <strong>{fps} FPS</strong> [measured]
+          Telemetry: <strong>{fps} FPS</strong> [measured] | Date: <strong>{storeCurrentDate ? new Date(currentTimestampMs).toISOString().replace('T', ' ').slice(0, 16) : ''} UTC</strong> [derived]
         </span>
         {hoveredName && (
           <span

@@ -10,6 +10,7 @@
  */
 
 import React, { useEffect, useState, useMemo, useRef } from 'react';
+import { useWorkspaceStore } from '../../data/workspaceStore';
 
 export interface TimeBarProps {
   sliderDay?: number; // 0 to 365 days
@@ -46,6 +47,7 @@ export const TimeBar: React.FC<TimeBarProps> = ({
     if (onChangeTimeRatio) {
       onChangeTimeRatio(clamped / 365);
     }
+    useWorkspaceStore.getState().setTimeEpochRatio(clamped / 365);
   };
 
   // Playback loop using requestAnimationFrame for 60fps smooth scrubbing
