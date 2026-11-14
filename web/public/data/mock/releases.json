@@ -1,0 +1,26 @@
+{
+  "releases": [
+    {
+      "release_batch": "2026-W42",
+      "published_at": "2026-10-18T12:00:00Z",
+      "pipeline_version": "0.1.0",
+      "fields_processed": [
+        "field_asteroid_belt",
+        "field_kuiper_edge"
+      ],
+      "candidate_counts": {
+        "total": 2,
+        "known_object": 1,
+        "high_motion_star": 0,
+        "artifact": 0,
+        "unknown": 1
+      },
+      "notes": "Initial mock benchmark release with 1 known asteroid and 1 unknown outer candidate.",
+      "labels": {
+        "candidate_counts.total": "derived",
+        "candidate_counts.known_object": "derived",
+        "candidate_counts.unknown": "derived"
+      }
+    }
+  ]
+}

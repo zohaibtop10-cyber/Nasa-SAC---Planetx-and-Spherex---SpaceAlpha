@@ -1,0 +1,52 @@
+{
+  "fields": [
+    {
+      "id": "field_asteroid_belt",
+      "name": "Main Asteroid Belt Benchmark (Ceres)",
+      "ra_deg": 182.48,
+      "dec_deg": 14.29,
+      "fov_deg": 0.5,
+      "description": "Validation field tracking known main-belt asteroids with JPL Horizons ephemerides.",
+      "target_type": "benchmark_known_asteroid",
+      "scans": [
+        {
+          "scan_id": "SPHEREX_S1_182_14_A",
+          "epoch_utc": "2026-04-10T02:15:00Z"
+        },
+        {
+          "scan_id": "SPHEREX_S1_182_14_B",
+          "epoch_utc": "2026-04-10T14:30:00Z"
+        }
+      ],
+      "labels": {
+        "ra_deg": "measured",
+        "dec_deg": "measured",
+        "fov_deg": "assumed"
+      }
+    },
+    {
+      "id": "field_kuiper_edge",
+      "name": "Outer Solar System Survey Field",
+      "ra_deg": 133.82,
+      "dec_deg": -7.21,
+      "fov_deg": 0.5,
+      "description": "Multi-epoch infrared survey field near ecliptic monitoring for uncataloged slow movers.",
+      "target_type": "unknown_candidate_field",
+      "scans": [
+        {
+          "scan_id": "SPHEREX_E1_133_N07",
+          "epoch_utc": "2026-03-15T08:00:00Z"
+        },
+        {
+          "scan_id": "SPHEREX_E2_133_N07",
+          "epoch_utc": "2026-09-15T08:00:00Z"
+        }
+      ],
+      "labels": {
+        "ra_deg": "measured",
+        "dec_deg": "measured",
+        "fov_deg": "assumed"
+      }
+    }
+  ]
+}

@@ -1,0 +1,93 @@
+{
+  "candidates": [
+    {
+      "id": "cand_ceres_001",
+      "field_id": "field_asteroid_belt",
+      "release_batch": "2026-W42",
+      "positions": [
+        {
+          "time": "2026-04-10T02:15:00Z",
+          "ra": 182.4512,
+          "dec": 14.2831,
+          "err": 0.05
+        },
+        {
+          "time": "2026-04-10T14:30:00Z",
+          "ra": 182.5124,
+          "dec": 14.3015,
+          "err": 0.05
+        }
+      ],
+      "verdict": "known_object",
+      "reason_chain": [
+        "Infrared point source detected at 18.4 sigma in SPHEREx QR2 Band 4",
+        "Correlated with JPL Small-Body Identification API query within 5.0 arcsec search cone",
+        "Confirmed match: Minor Planet (1) Ceres at separation 0.24 arcsec",
+        "Consistent with known ephemeris orbit at heliocentric distance 2.77 AU"
+      ],
+      "confidence": 0.99,
+      "match": {
+        "catalog": "JPL Small-Body Ident",
+        "designation": "1 Ceres",
+        "separation_arcsec": 0.24
+      },
+      "distance_range": null,
+      "colour_index": 0.72,
+      "simulated": false,
+      "labels": {
+        "confidence": "derived",
+        "colour_index": "measured",
+        "positions.ra": "measured",
+        "positions.dec": "measured",
+        "positions.err": "derived",
+        "match.separation_arcsec": "derived"
+      }
+    },
+    {
+      "id": "cand_unknown_x01",
+      "field_id": "field_kuiper_edge",
+      "release_batch": "2026-W42",
+      "positions": [
+        {
+          "time": "2026-03-15T08:00:00Z",
+          "ra": 133.8211,
+          "dec": -7.2104,
+          "err": 0.08
+        },
+        {
+          "time": "2026-09-15T08:00:00Z",
+          "ra": 133.8329,
+          "dec": -7.2148,
+          "err": 0.09
+        }
+      ],
+      "verdict": "unknown",
+      "reason_chain": [
+        "Uncataloged infrared mover detected at 7.1 sigma across 2 observation epochs",
+        "Cross-matched against JPL Small-Body Ident (5.0 arcsec radius): no known solar system object",
+        "Cross-matched against Gaia DR3 (3.0 arcsec radius): no stellar counterpart",
+        "Apparent angular shift of 44.2 arcsec observed over 184-day SPHEREx survey cadence",
+        "Parallax grid search yields distance bounds 55.0 to 180.0 AU assuming Earth-SPHEREx 2.0 AU orbital baseline",
+        "Triage verdict: unknown outer solar system candidate pending epoch 3 confirmation"
+      ],
+      "confidence": 0.82,
+      "match": null,
+      "distance_range": {
+        "min_au": 55.0,
+        "max_au": 180.0,
+        "assumption": "Calculated from 6-month Earth-SPHEREx 2.0 AU orbital baseline parallax"
+      },
+      "colour_index": 1.85,
+      "simulated": true,
+      "labels": {
+        "confidence": "derived",
+        "colour_index": "measured",
+        "distance_min_au": "derived",
+        "distance_max_au": "derived",
+        "positions.ra": "measured",
+        "positions.dec": "measured",
+        "positions.err": "derived"
+      }
+    }
+  ]
+}
