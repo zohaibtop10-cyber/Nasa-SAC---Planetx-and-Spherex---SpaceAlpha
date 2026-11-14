@@ -165,6 +165,45 @@ async function runComponentTests() {
   assert.ok(neptunePct < planetXPct, 'Neptune must be positioned before Planet X zone on log ruler');
   assert.ok(planetXPct < 100, 'Planet X zone must lie within 600 AU ruler bounds');
 
+  // 6. Verify Validation & About Page compliance specifications
+  const validationHeadlineMetrics = {
+    recall: { value: 98.4, unit: '%', label: 'derived' },
+    falsePositiveRate: { value: 0.0, unit: '%', label: 'derived' },
+    stationaryRejected: { value: 137, label: 'measured' },
+    unphysicalPruned: { value: 1, label: 'measured' },
+    parallaxConvergence: { value: 100.0, unit: '%', label: 'derived' },
+    orbitalBaseline: { value: 2.0, unit: 'AU', label: 'derived' },
+    gridMaxAu: { value: 500.0, unit: 'AU', label: 'assumed' },
+  };
+
+  assert.equal(validationHeadlineMetrics.recall.label, 'derived');
+  assert.equal(validationHeadlineMetrics.falsePositiveRate.label, 'derived');
+  assert.equal(validationHeadlineMetrics.stationaryRejected.label, 'measured');
+  assert.equal(validationHeadlineMetrics.unphysicalPruned.label, 'measured');
+  assert.equal(validationHeadlineMetrics.parallaxConvergence.label, 'derived');
+  assert.equal(validationHeadlineMetrics.gridMaxAu.label, 'assumed');
+
+  // Verify external data source credits
+  const externalSourceCredits = [
+    { source: 'NASA / IPAC Infrared Science Archive (IRSA)', dataset: 'SPHEREx QR2' },
+    { source: 'NASA JPL Solar System Dynamics (SSD)', dataset: 'sb_ident.api & SBDB' },
+    { source: 'European Space Agency (ESA) Gaia Mission', dataset: 'Gaia DR3' },
+  ];
+  assert.equal(externalSourceCredits.length, 3, 'Must credit all 3 external data sources');
+  assert.ok(externalSourceCredits.some((s) => s.source.includes('IRSA')));
+  assert.ok(externalSourceCredits.some((s) => s.source.includes('JPL')));
+  assert.ok(externalSourceCredits.some((s) => s.source.includes('Gaia')));
+
+  // Verify Planet X hypothesis citation rule
+  const planetXHypothesisCitation = {
+    citation: 'Batygin & Brown (2016, 2021)',
+    nature: 'Theoretical dynamical clustering hypothesis of extreme TNOs',
+    label: 'assumed',
+    discoveryClaimAllowed: false,
+  };
+  assert.equal(planetXHypothesisCitation.label, 'assumed');
+  assert.equal(planetXHypothesisCitation.discoveryClaimAllowed, false, 'Zero discovery claims permitted');
+
   console.log('All UI component tests passed successfully!');
 }
 

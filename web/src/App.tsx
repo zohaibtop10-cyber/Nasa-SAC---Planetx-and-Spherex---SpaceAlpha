@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { loadCandidates, loadFields, loadReleases } from './data';
 import { Candidate, Field, Release } from './data/types';
 import { SolarSystemScene } from './scene/SolarSystemScene';
+import { AboutPage } from './ui/components/AboutPage';
 import { DistanceRangeBar } from './ui/components/DistanceRangeBar';
 import { FeedPanel } from './ui/components/FeedPanel';
 import { Header } from './ui/components/Header';
@@ -10,7 +11,7 @@ import { ObjectPage } from './ui/components/ObjectPage';
 import { ObjectSidePanel } from './ui/components/ObjectSidePanel';
 import { SkyBlinkViewer } from './ui/components/SkyBlinkViewer';
 import { TimeBar } from './ui/components/TimeBar';
-import { ValidationTab } from './ui/components/ValidationTab';
+import { ValidationPage } from './ui/components/ValidationPage';
 
 export const App: React.FC = () => {
   const [fields, setFields] = useState<Field[]>([]);
@@ -18,13 +19,13 @@ export const App: React.FC = () => {
   const [releases, setReleases] = useState<Release[]>([]);
   const [selectedFieldId, setSelectedFieldId] = useState<string>('field_asteroid_belt');
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'3d' | 'blink' | 'validation' | 'gallery'>('3d');
+  const [activeTab, setActiveTab] = useState<'3d' | 'blink' | 'validation' | 'gallery' | 'about'>('3d');
   const [timeEpochRatio, setTimeEpochRatio] = useState<number>(0.0);
   const [currentScanIndex, setCurrentScanIndex] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // URL Hash Routing (#/object/<id>)
+  // URL Hash Routing (#/object/<id>, #/validation, #/about)
   const [objectRouteId, setObjectRouteId] = useState<string | null>(() => {
     const hash = window.location.hash;
     if (hash.startsWith('#/object/')) {
@@ -41,12 +42,34 @@ export const App: React.FC = () => {
         setObjectRouteId(id);
       } else {
         setObjectRouteId(null);
+        if (hash === '#/validation') {
+          setActiveTab('validation');
+        } else if (hash === '#/about') {
+          setActiveTab('about');
+        } else if (hash === '#/gallery') {
+          setActiveTab('gallery');
+        } else if (hash === '#/blink') {
+          setActiveTab('blink');
+        } else if (hash === '#/' || hash === '#' || hash === '') {
+          setActiveTab('3d');
+        }
       }
     };
 
+    handleHashChange();
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
+
+  const handleTabChange = (tab: '3d' | 'blink' | 'validation' | 'gallery' | 'about') => {
+    setActiveTab(tab);
+    setObjectRouteId(null);
+    if (tab === '3d') {
+      window.location.hash = '#/';
+    } else {
+      window.location.hash = `#/${tab}`;
+    }
+  };
 
   useEffect(() => {
     async function initData() {
@@ -144,10 +167,7 @@ export const App: React.FC = () => {
           selectedFieldId={selectedFieldId}
           onSelectField={setSelectedFieldId}
           activeTab={activeTab}
-          onChangeTab={(tab) => {
-            window.location.hash = '#/';
-            setActiveTab(tab);
-          }}
+          onChangeTab={handleTabChange}
           latestRelease={releases[0]?.release_batch}
         />
         <ObjectPage
@@ -180,7 +200,7 @@ export const App: React.FC = () => {
         selectedFieldId={selectedFieldId}
         onSelectField={setSelectedFieldId}
         activeTab={activeTab}
-        onChangeTab={setActiveTab}
+        onChangeTab={handleTabChange}
         latestRelease={releases[0]?.release_batch}
       />
 
@@ -257,9 +277,18 @@ export const App: React.FC = () => {
           />
         )}
 
-        {activeTab === 'validation' && <ValidationTab candidates={candidates} />}
+        {activeTab === 'validation' && (
+          <ValidationPage
+            candidates={candidates}
+            onBackToFeed={() => handleTabChange('3d')}
+          />
+        )}
 
         {activeTab === 'gallery' && <ModelGallery candidates={candidates} />}
+
+        {activeTab === 'about' && (
+          <AboutPage onBackToFeed={() => handleTabChange('3d')} />
+        )}
       </div>
     </div>
   );

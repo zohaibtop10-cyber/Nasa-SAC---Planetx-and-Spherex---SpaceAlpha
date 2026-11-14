@@ -5,8 +5,8 @@ interface HeaderProps {
   fields: Field[];
   selectedFieldId: string;
   onSelectField: (fieldId: string) => void;
-  activeTab: '3d' | 'blink' | 'validation' | 'gallery';
-  onChangeTab: (tab: '3d' | 'blink' | 'validation' | 'gallery') => void;
+  activeTab: '3d' | 'blink' | 'validation' | 'gallery' | 'about';
+  onChangeTab: (tab: '3d' | 'blink' | 'validation' | 'gallery' | 'about') => void;
   latestRelease?: string;
 }
 
@@ -154,6 +154,23 @@ export const Header: React.FC<HeaderProps> = ({
           }}
         >
           Model Gallery
+        </button>
+
+        <button
+          onClick={() => onChangeTab('about')}
+          style={{
+            fontFamily: 'monospace',
+            fontSize: '12px',
+            color: activeTab === 'about' ? 'var(--color-text-1)' : '#71717A',
+            backgroundColor: activeTab === 'about' ? 'var(--color-surface)' : 'transparent',
+            border: activeTab === 'about' ? '1px solid var(--color-hairline)' : '1px solid transparent',
+            padding: '6px 14px',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          About &amp; Sources
         </button>
       </nav>
 
