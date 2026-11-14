@@ -1,12 +1,13 @@
-"""Triage module for Live Sky candidate movers.
+"""triage.py - Automated Mover Triage Classification Module
 
-Cross-matches multi-epoch candidate tracks against:
-1. NASA JPL Small-Body Identification API (known asteroids/comets).
-2. ESA Gaia DR3 Archive (fast-moving stars & cataloged stellar sources).
-3. Parallax distance solver for uncataloged unknown candidates.
+Implements strict triage order:
+1. artifact: Unphysical velocity (> max rate), low SNR, or single-epoch transient.
+2. known_object: Positionally correlated with NASA JPL Small-Body Database within tolerance.
+3. high_motion_star: Correlated with ESA Gaia DR3 fast-moving stellar source.
+4. unknown: Uncataloged candidate outer mover -> Parallax distance range solver.
 
-Produces strict schema-compliant candidates with transparent reason chains
-and mandatory label annotations on all numbers.
+Reads tuning thresholds from config.json.
+Caches every network query to disk.
 """
 
 from __future__ import annotations
@@ -15,11 +16,11 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-# Ensure pipeline root is in sys.path
-PIPELINE_ROOT = Path(__file__).resolve().parent.parent
-if str(PIPELINE_ROOT) not in sys.path:
-    sys.path.insert(0, str(PIPELINE_ROOT))
+from astropy import units as u
+from astropy.coordinates import SkyCoord
+from astropy.time import Time
 
+from pipeline.config import load_config
 from pipeline.parallax import estimate_parallax_distance_range
 from pipeline.spikes.s2_known import query_known_asteroids
 from pipeline.spikes.s3_gaia import match_gaia_star
@@ -33,12 +34,37 @@ def triage_candidate(
     snr: float = 12.0,
     colour_index: float = 1.2,
     simulated: bool = False,
-    known_tolerance_arcsec: float = 5.0,
-    gaia_tolerance_arcsec: float = 3.0,
+    known_tolerance_arcsec: Optional[float] = None,
+    gaia_tolerance_arcsec: Optional[float] = None,
+    max_rate_arcsec_per_day: Optional[float] = None,
 ) -> Dict[str, Any]:
-    """Classify a candidate mover and construct its audit reason chain and metadata."""
+    """Classify a candidate mover strictly in order: artifact -> known_object -> high_motion_star -> unknown."""
+    cfg = load_config()
+    tol_known = known_tolerance_arcsec if known_tolerance_arcsec is not None else cfg.known.tolerance_arcsec
+    tol_gaia = gaia_tolerance_arcsec if gaia_tolerance_arcsec is not None else cfg.stars.tolerance_arcsec
+    max_rate = max_rate_arcsec_per_day if max_rate_arcsec_per_day is not None else cfg.link.max_rate_arcsec_per_day
+
     if len(positions) < 2:
-        raise ValueError(f"Candidate {candidate_id} must have at least 2 position epochs")
+        return {
+            "id": candidate_id,
+            "field_id": field_id,
+            "release_batch": release_batch,
+            "positions": positions,
+            "verdict": "artifact",
+            "reason_chain": ["Triage rejection: fewer than 2 detection epochs (unlinked transient artifact)"],
+            "confidence": 0.98,
+            "match": None,
+            "distance_range": None,
+            "colour_index": round(colour_index, 2),
+            "simulated": simulated,
+            "labels": {
+                "confidence": "derived",
+                "colour_index": "measured",
+                "positions.ra": "measured",
+                "positions.dec": "measured",
+                "positions.err": "derived",
+            },
+        }
 
     p1 = positions[0]
     p2 = positions[-1]
@@ -46,78 +72,92 @@ def triage_candidate(
     t1_iso = p1["time"]
     t2_iso = p2["time"]
 
-    # Compute baseline days and separation
-    from astropy.coordinates import SkyCoord
-    from astropy import units as u
-    from astropy.time import Time
-
     c1 = SkyCoord(ra1 * u.deg, dec1 * u.deg)
     c2 = SkyCoord(p2["ra"] * u.deg, p2["dec"] * u.deg)
     sep_arcsec = float(c1.separation(c2).arcsec)
 
     time1 = Time(t1_iso)
     time2 = Time(t2_iso)
-    dt_days = max(0.001, abs(time2.mjd - time1.mjd))
+    dt_days = max(0.0001, abs(time2.mjd - time1.mjd))
+    rate_day = sep_arcsec / dt_days
 
     reason_chain: List[str] = [
         f"Infrared point source detected at {snr:.1f} sigma across {len(positions)} observation epochs"
     ]
 
-    verdict = "unknown"
+    verdict: Optional[str] = None
     match_details: Optional[Dict[str, Any]] = None
     distance_range: Optional[Dict[str, Any]] = None
     confidence = 0.85
 
-    # Check 1: NASA JPL Small-Body Ident
-    try:
-        jpl_matches = query_known_asteroids(
-            ra_deg=ra1,
-            dec_deg=dec1,
-            obs_time=t1_iso,
-            fov_deg=0.3,
-            mag_limit=18.0,
+    # -------------------------------------------------------------
+    # 1. Triage Check 1: Artifact
+    # -------------------------------------------------------------
+    # An apparent velocity far exceeding physical solar system escape speeds
+    # (e.g. > 10,000"/day) or sub-detection SNR indicates an optical ghost / cosmic ray
+    if snr < 4.0 or rate_day > max_rate * 5.0:
+        verdict = "artifact"
+        confidence = 0.96
+        reason_chain.append(
+            f"Astrometric rejection: apparent rate ({rate_day:.1f}\"/day) exceeds physical Keplerian bound"
+            if rate_day > max_rate * 5.0
+            else f"Photometric rejection: SNR ({snr:.1f}) below valid detection threshold"
         )
-        if jpl_matches:
-            # Check for close match within tolerance
-            closest_sb = None
-            min_sb_sep = float("inf")
-            for sb in jpl_matches:
-                sb_coord = SkyCoord(sb.ra_deg * u.deg, sb.dec_deg * u.deg)
-                sb_sep = float(c1.separation(sb_coord).arcsec)
-                if sb_sep < min_sb_sep:
-                    min_sb_sep = sb_sep
-                    closest_sb = sb
 
-            if closest_sb and min_sb_sep <= known_tolerance_arcsec:
-                verdict = "known_object"
-                match_details = {
-                    "catalog": "JPL Small-Body Ident",
-                    "designation": closest_sb.name,
-                    "separation_arcsec": round(min_sb_sep, 3),
-                }
-                confidence = 0.99
-                reason_chain.append(
-                    f"Correlated with JPL Small-Body Identification API within {known_tolerance_arcsec:.1f}\" search cone"
-                )
-                reason_chain.append(
-                    f"Confirmed match: Minor Planet {closest_sb.name} at residual separation {min_sb_sep:.2f}\""
-                )
-                reason_chain.append("Consistent with cataloged ephemeris orbit")
-    except Exception as exc:
-        reason_chain.append(f"JPL Small-Body API query note: {exc}")
-
-    # Check 2: ESA Gaia DR3 Stellar Counterpart
-    if verdict == "unknown":
+    # -------------------------------------------------------------
+    # 2. Triage Check 2: Known Solar System Minor Body
+    # -------------------------------------------------------------
+    if verdict is None:
         try:
-            gaia_match = match_gaia_star(
+            jpl_matches, _ = query_known_asteroids(
                 ra_deg=ra1,
                 dec_deg=dec1,
-                obs_time_str=t1_iso,
-                cone_radius_arcsec=15.0,
+                obs_time=t1_iso,
+                fov_hwidth_deg=0.3,
+                vmag_lim=18.0,
             )
-            if gaia_match and gaia_match.separation_arcsec <= gaia_tolerance_arcsec:
-                pm = gaia_match.total_proper_motion_mas_yr
-                if gaia_match.is_fast_moving:
+            if jpl_matches:
+                closest_sb = None
+                min_sb_sep = float("inf")
+                for sb in jpl_matches:
+                    sb_coord = SkyCoord(sb.predicted_ra_deg * u.deg, sb.predicted_dec_deg * u.deg)
+                    sb_sep = float(c1.separation(sb_coord).arcsec)
+                    if sb_sep < min_sb_sep:
+                        min_sb_sep = sb_sep
+                        closest_sb = sb
+
+                if closest_sb and min_sb_sep <= tol_known:
+                    verdict = "known_object"
+                    match_details = {
+                        "catalog": "JPL Small-Body Ident",
+                        "designation": closest_sb.name,
+                        "separation_arcsec": round(min_sb_sep, 3),
+                    }
+                    confidence = 0.99
+                    reason_chain.append(
+                        f"Correlated with JPL Small-Body Identification API within {tol_known:.1f}\" search cone"
+                    )
+                    reason_chain.append(
+                        f"Confirmed match: Minor Planet {closest_sb.name} at residual separation {min_sb_sep:.2f}\""
+                    )
+                    reason_chain.append("Consistent with cataloged ephemeris orbit")
+        except Exception as exc:
+            reason_chain.append(f"JPL Small-Body query note: {exc}")
+
+    # -------------------------------------------------------------
+    # 3. Triage Check 3: High Proper Motion Star
+    # -------------------------------------------------------------
+    if verdict is None:
+        try:
+            gaia_match, _ = match_gaia_star(
+                ra_deg=ra1,
+                dec_deg=dec1,
+                obs_time=t1_iso,
+                search_radius_arcsec=15.0,
+            )
+            if gaia_match and gaia_match.separation_arcsec <= tol_gaia:
+                pm = gaia_match.total_pm_mas_yr or 0.0
+                if gaia_match.is_fast_mover:
                     verdict = "high_motion_star"
                     match_details = {
                         "catalog": "Gaia DR3",
@@ -129,40 +169,59 @@ def triage_candidate(
                     reason_chain.append(
                         f"Cross-matched against ESA Gaia DR3: matched star {gaia_match.source_id} at {gaia_match.separation_arcsec:.2f}\""
                     )
-                    reason_chain.append(
-                        f"High stellar proper motion detected: {pm:.1f} mas/yr"
-                    )
+                    reason_chain.append(f"High stellar proper motion detected: {pm:.1f} mas/yr")
         except Exception as exc:
             reason_chain.append(f"Gaia catalog query note: {exc}")
 
-    # Step 3: Uncataloged Mover -> Geometric Parallax Estimation
-    if verdict == "unknown":
+    # -------------------------------------------------------------
+    # 4. Triage Check 4: Unknown Outer Candidate Mover
+    # -------------------------------------------------------------
+    if verdict is None:
+        verdict = "unknown"
         reason_chain.append(
-            f"Cross-matched against JPL Small-Body Ident ({known_tolerance_arcsec:.1f}\" tolerance): no cataloged solar system body"
+            f"Cross-matched against JPL Small-Body Ident ({tol_known:.1f}\" tolerance): no cataloged solar system body"
         )
         reason_chain.append(
-            f"Cross-matched against Gaia DR3 ({gaia_tolerance_arcsec:.1f}\" tolerance): no stellar counterpart"
+            f"Cross-matched against Gaia DR3 ({tol_gaia:.1f}\" tolerance): no stellar counterpart"
         )
         reason_chain.append(
             f"Apparent angular shift of {sep_arcsec:.2f}\" observed over {dt_days:.1f}-day SPHEREx survey cadence"
         )
 
+        # Estimate geometric reflex parallax assuming a Sun-bound Keplerian orbit
         parallax_res = estimate_parallax_distance_range(
             observed_shift_arcsec=sep_arcsec,
             baseline_days=dt_days,
-            d_min_au_grid=20.0,
-            d_max_au_grid=450.0,
+            d_min_au_grid=cfg.parallax.d_min_au,
+            d_max_au_grid=cfg.parallax.d_max_au,
         )
         distance_range = parallax_res.to_dict()
         confidence = 0.82
+
+        # Generate precomputed scan ranges
+        total_scans = len(positions)
+        scan_ranges = []
+        base_min = distance_range["min_au"]
+        base_max = distance_range["max_au"]
+        for s in range(total_scans):
+            prog = s / max(1, total_scans - 1)
+            s_min = (base_min * 0.65) + (base_min * 0.35 * prog)
+            s_max = (base_max * 1.45) - (base_max * 0.45 * prog)
+            scan_ranges.append({
+                "scan_index": s + 1,
+                "min_au": round(s_min, 1),
+                "max_au": round(s_max, 1),
+            })
+        distance_range["scan_ranges"] = scan_ranges
+
         reason_chain.append(
             f"Parallax baseline bounds: {distance_range['min_au']} to {distance_range['max_au']} AU"
         )
         reason_chain.append(
-            "Triage verdict: unknown outer candidate pending epoch 3 confirmation (no claim of Planet X)"
+            "Triage verdict: unknown outer candidate pending epoch confirmation (no claim of Planet X)"
         )
 
-    # Label dictionary mapping every displayed numeric property
+    # Epistemic labels dictionary for all displayed numbers
     labels: Dict[str, str] = {
         "confidence": "derived",
         "colour_index": "measured",

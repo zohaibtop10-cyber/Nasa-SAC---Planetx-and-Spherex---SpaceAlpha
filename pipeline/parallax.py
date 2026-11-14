@@ -26,14 +26,17 @@ class ParallaxResult:
     observed_shift_arcsec: float
     assumption: str
     labels: Dict[str, str]
+    scan_ranges: Optional[List[Dict[str, Any]]] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        res: Dict[str, Any] = {
             "min_au": round(self.min_au, 1),
             "max_au": round(self.max_au, 1),
-            "nominal_au": round(self.nominal_au, 1),
             "assumption": self.assumption,
         }
+        if self.scan_ranges:
+            res["scan_ranges"] = self.scan_ranges
+        return res
 
 
 def estimate_parallax_distance_range(

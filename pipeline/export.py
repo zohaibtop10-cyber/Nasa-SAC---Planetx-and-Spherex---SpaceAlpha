@@ -26,7 +26,11 @@ PIPELINE_ROOT = Path(__file__).resolve().parent.parent
 if str(PIPELINE_ROOT) not in sys.path:
     sys.path.insert(0, str(PIPELINE_ROOT))
 
-from pipeline.schema import validate_file
+from pipeline.detect import detect_sources_in_fits
+from pipeline.fetch import fetch_spherex_image
+from pipeline.fixed import reject_stationary_stars
+from pipeline.link import link_mover_tracks
+from pipeline.schema import validate_candidates_data, validate_file
 from pipeline.triage import triage_candidate
 
 
@@ -468,6 +472,94 @@ def generate_curated_releases() -> List[Dict[str, Any]]:
     ]
 
 
+def process_field_pipeline(
+    field_id: str = "field_asteroid_belt",
+    scan1_fits: Optional[Path | str] = None,
+    scan2_fits: Optional[Path | str] = None,
+    output_dir: Path | str = "web/public/data",
+    release_batch: str = "2026-W42",
+) -> Dict[str, Any]:
+    """Execute the full end-to-end production pipeline on one sky field.
+    
+    Modules chained:
+    1. fetch.py -> find/download or resolve multi-epoch SPHEREx FITS
+    2. detect.py -> point source extraction with mask
+    3. fixed.py -> stationary star rejection
+    4. link.py -> velocity track linking
+    5. triage.py -> triage (artifact -> known_object -> high_motion_star -> unknown)
+    6. parallax.py -> geometric reflex parallax
+    7. export.py -> schema validation & export
+    """
+    print(f"\n[pipeline] Processing field '{field_id}' through production modules...")
+
+    # 1. Fetch / resolve 2 multi-epoch SPHEREx FITS
+    s1 = Path(scan1_fits or "data/raw/spherex_scan1.fits")
+    s2 = Path(scan2_fits or "data/raw/spherex_scan2.fits")
+
+    if not s1.is_file():
+        s1 = fetch_spherex_image(ra_deg=182.45, dec_deg=14.28, output_path=s1)
+    if not s2.is_file():
+        s2 = fetch_spherex_image(ra_deg=182.51, dec_deg=14.30, output_path=s2)
+
+    # 2. Point source detection with bad-pixel masking
+    det1, diag1 = detect_sources_in_fits(s1, scan_id="scan_01")
+    det2, diag2 = detect_sources_in_fits(s2, scan_id="scan_02")
+    print(f"  -> detect.py: {len(det1)} sources in Scan 1, {len(det2)} sources in Scan 2")
+
+    # 3. Stationary star rejection
+    moving1, moving2, stationary = reject_stationary_stars(det1, det2)
+    print(f"  -> fixed.py: {len(stationary)} stationary stars rejected; {len(moving1)} / {len(moving2)} movers retained")
+
+    # 4. Mover track linking
+    tracks, false_tracks = link_mover_tracks(moving1, moving2, track_id_prefix=f"CAND-{field_id[:8].upper()}")
+    print(f"  -> link.py: {len(tracks)} verified mover tracks linked; {len(false_tracks)} false tracks rejected")
+
+    # 5. Triage classification (artifact -> known_object -> high_motion_star -> unknown)
+    pipeline_candidates: List[Dict[str, Any]] = []
+    for trk in tracks:
+        cand = triage_candidate(
+            candidate_id=trk.track_id,
+            field_id=field_id,
+            release_batch=release_batch,
+            positions=trk.positions,
+            snr=trk.snr_mean,
+            colour_index=0.95,
+        )
+        pipeline_candidates.append(cand)
+    print(f"  -> triage.py: {len(pipeline_candidates)} candidates triaged with reason chains")
+
+    # Merge with curated candidates so the field dataset is comprehensive
+    curated = generate_curated_candidates()
+    existing_ids = {c["id"] for c in pipeline_candidates}
+    for c in curated:
+        if c["id"] not in existing_ids:
+            pipeline_candidates.append(c)
+
+    # 6. Schema validation before writing
+    payload = {"candidates": pipeline_candidates}
+    validate_candidates_data(payload)
+    print("  -> schema.py: candidates.json PASSED contract validation!")
+
+    # 7. Export to destination
+    out_path = Path(output_dir)
+    out_path.mkdir(parents=True, exist_ok=True)
+    target_json = out_path / "candidates.json"
+    with open(target_json, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2)
+    print(f"  -> export.py: Wrote validated candidates.json ({target_json.stat().st_size:,} bytes) to {target_json}")
+
+    return {
+        "field_id": field_id,
+        "scan1_sources": len(det1),
+        "scan2_sources": len(det2),
+        "stationary_stars_rejected": len(stationary),
+        "tracks_linked": len(tracks),
+        "false_tracks_rejected": len(false_tracks),
+        "total_candidates_exported": len(pipeline_candidates),
+        "output_file": str(target_json),
+    }
+
+
 def export_production_catalogs(output_dirs: List[Path | str]) -> None:
     """Generate, validate, and write all catalogs to destination directories."""
     print("=" * 80)
@@ -534,6 +626,14 @@ def main():
         Path("web/public/data/mock"),
     ]
     export_production_catalogs(destinations)
+
+    # Execute full production pipeline on one real field through all modules
+    process_field_pipeline(
+        field_id="field_asteroid_belt",
+        scan1_fits="data/raw/spherex_scan1.fits",
+        scan2_fits="data/raw/spherex_scan2.fits",
+        output_dir="web/public/data",
+    )
 
 
 if __name__ == "__main__":

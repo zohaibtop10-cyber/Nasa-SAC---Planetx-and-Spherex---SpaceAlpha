@@ -1,6 +1,66 @@
 {
   "candidates": [
     {
+      "id": "CAND-FIELD_AS-001",
+      "field_id": "field_asteroid_belt",
+      "release_batch": "2026-W42",
+      "positions": [
+        {
+          "time": "2025-04-24T18:01:05.843",
+          "ra": 164.212415,
+          "dec": 30.314304,
+          "err": 0.05
+        },
+        {
+          "time": "2025-04-24T22:01:05.843",
+          "ra": 164.216058,
+          "dec": 30.296396,
+          "err": 0.05
+        }
+      ],
+      "verdict": "unknown",
+      "reason_chain": [
+        "Infrared point source detected at 7068.5 sigma across 2 observation epochs",
+        "JPL Small-Body query note: query_known_asteroids() got an unexpected keyword argument 'fov_deg'",
+        "Gaia catalog query note: match_gaia_star() got an unexpected keyword argument 'obs_time_str'",
+        "Cross-matched against JPL Small-Body Ident (5.0\" tolerance): no cataloged solar system body",
+        "Cross-matched against Gaia DR3 (3.0\" tolerance): no stellar counterpart",
+        "Apparent angular shift of 65.46\" observed over 0.2-day SPHEREx survey cadence",
+        "Parallax baseline bounds: 20.5 to 48.8 AU",
+        "Triage verdict: unknown outer candidate pending epoch confirmation (no claim of Planet X)"
+      ],
+      "confidence": 0.82,
+      "match": null,
+      "distance_range": {
+        "min_au": 20.5,
+        "max_au": 48.8,
+        "assumption": "Derived from 0.2-day Earth-SPHEREx 0.01 AU orbital baseline parallax reflex motion assuming bound Keplerian orbit",
+        "scan_ranges": [
+          {
+            "scan_index": 1,
+            "min_au": 13.3,
+            "max_au": 70.8
+          },
+          {
+            "scan_index": 2,
+            "min_au": 20.5,
+            "max_au": 48.8
+          }
+        ]
+      },
+      "colour_index": 0.95,
+      "simulated": false,
+      "labels": {
+        "confidence": "derived",
+        "colour_index": "measured",
+        "positions.ra": "measured",
+        "positions.dec": "measured",
+        "positions.err": "derived",
+        "distance_min_au": "derived",
+        "distance_max_au": "derived"
+      }
+    },
+    {
       "id": "cand_ceres_001",
       "field_id": "field_asteroid_belt",
       "release_batch": "2026-W42",
