@@ -7,9 +7,10 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "tsx src/data/data.test.ts && tsx src/scene/models/models.test.ts && tsx src/ui/components/components.test.ts && tsx src/api/fetchNasaObjectWorkflow.test.ts"
+    "test": "tsx src/data/data.test.ts && tsx src/scene/models/models.test.ts && tsx src/ui/components/components.test.ts && tsx src/api/fetchNasaObjectWorkflow.test.ts && tsx src/api/exploreObjectWorkflow.test.ts"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "framer-motion": "^14.14.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
