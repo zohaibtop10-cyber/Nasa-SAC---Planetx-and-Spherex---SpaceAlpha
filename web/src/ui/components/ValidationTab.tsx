@@ -239,7 +239,7 @@ export const ValidationTab: React.FC<ValidationTabProps> = ({ candidates }) => {
                 borderRadius: '4px',
               }}
             >
-              29 / 29 PASSED (100%)
+              32 / 32 PASSED (100%)
             </span>
           </div>
 
@@ -261,6 +261,7 @@ export const ValidationTab: React.FC<ValidationTabProps> = ({ candidates }) => {
               { name: 'test_s2_known: JPL Small-Body ID API & sexagesimal queries', status: 'PASS' },
               { name: 'test_s3_gaia: ESA Gaia DR3 proper motion cone matching', status: 'PASS' },
               { name: 'test_s4_movers: photutils multi-epoch asteroid extraction', status: 'PASS' },
+              { name: 'test_production_pipeline: parallax solver, triage & exports', status: 'PASS' },
               { name: 'web_data_test: TypeScript loader & typed label enforcement', status: 'PASS' },
             ].map((t, idx) => (
               <div

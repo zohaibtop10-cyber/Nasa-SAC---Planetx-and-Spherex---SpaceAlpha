@@ -23,8 +23,8 @@ export const App: React.FC = () => {
       try {
         setLoading(true);
         const [fieldData, candidateData] = await Promise.all([
-          loadFields({ baseUrl: '/data/mock' }),
-          loadCandidates({ baseUrl: '/data/mock' }),
+          loadFields({ baseUrl: '/data' }),
+          loadCandidates({ baseUrl: '/data' }),
         ]);
         setFields(fieldData);
         setCandidates(candidateData);

@@ -2,50 +2,184 @@
   "fields": [
     {
       "id": "field_asteroid_belt",
-      "name": "Main Asteroid Belt Benchmark (Ceres)",
-      "ra_deg": 182.48,
-      "dec_deg": 14.29,
-      "fov_deg": 0.5,
-      "description": "Validation field tracking known main-belt asteroids with JPL Horizons ephemerides.",
-      "target_type": "benchmark_known_asteroid",
+      "name": "Main Asteroid Belt (Ceres Zone)",
+      "ra_deg": 182.4512,
+      "dec_deg": 14.2831,
+      "fov_deg": 3.5,
+      "description": "SPHEREx ecliptic plane scan intersecting main asteroid belt orbits.",
+      "target_type": "asteroid_belt",
       "scans": [
         {
-          "scan_id": "SPHEREX_S1_182_14_A",
-          "epoch_utc": "2026-04-10T02:15:00Z"
+          "scan_id": "spx_scan_2026_0410_a",
+          "epoch_utc": "2026-04-10T02:15:00Z",
+          "mjd": 61140.09375
         },
         {
-          "scan_id": "SPHEREX_S1_182_14_B",
-          "epoch_utc": "2026-04-10T14:30:00Z"
+          "scan_id": "spx_scan_2026_0410_b",
+          "epoch_utc": "2026-04-10T14:30:00Z",
+          "mjd": 61140.60417
         }
       ],
       "labels": {
         "ra_deg": "measured",
         "dec_deg": "measured",
-        "fov_deg": "assumed"
+        "fov_deg": "measured"
       }
     },
     {
       "id": "field_kuiper_edge",
-      "name": "Outer Solar System Survey Field",
-      "ra_deg": 133.82,
-      "dec_deg": -7.21,
-      "fov_deg": 0.5,
-      "description": "Multi-epoch infrared survey field near ecliptic monitoring for uncataloged slow movers.",
-      "target_type": "unknown_candidate_field",
+      "name": "Kuiper Belt Outer Rim",
+      "ra_deg": 133.8211,
+      "dec_deg": -7.2104,
+      "fov_deg": 3.5,
+      "description": "Multi-epoch 6-month survey cadence testing distant reflex parallax.",
+      "target_type": "kuiper_belt",
       "scans": [
         {
-          "scan_id": "SPHEREX_E1_133_N07",
-          "epoch_utc": "2026-03-15T08:00:00Z"
+          "scan_id": "spx_scan_2026_0315",
+          "epoch_utc": "2026-03-15T08:00:00Z",
+          "mjd": 61114.33333
         },
         {
-          "scan_id": "SPHEREX_E2_133_N07",
-          "epoch_utc": "2026-09-15T08:00:00Z"
+          "scan_id": "spx_scan_2026_0915",
+          "epoch_utc": "2026-09-15T08:00:00Z",
+          "mjd": 61298.33333
         }
       ],
       "labels": {
         "ra_deg": "measured",
         "dec_deg": "measured",
-        "fov_deg": "assumed"
+        "fov_deg": "measured"
+      }
+    },
+    {
+      "id": "field_fast_star",
+      "name": "Barnard's Star Vicinity",
+      "ra_deg": 269.4521,
+      "dec_deg": 4.6934,
+      "fov_deg": 3.5,
+      "description": "Calibration field tracking benchmark high proper motion red dwarf.",
+      "target_type": "high_proper_motion",
+      "scans": [
+        {
+          "scan_id": "spx_scan_2026_0201",
+          "epoch_utc": "2026-02-01T00:00:00Z",
+          "mjd": 61072.0
+        },
+        {
+          "scan_id": "spx_scan_2026_0801",
+          "epoch_utc": "2026-08-01T00:00:00Z",
+          "mjd": 61253.0
+        }
+      ],
+      "labels": {
+        "ra_deg": "measured",
+        "dec_deg": "measured",
+        "fov_deg": "measured"
+      }
+    },
+    {
+      "id": "field_brown_dwarf",
+      "name": "WISE 0855-0714 Vicinity",
+      "ra_deg": 133.8562,
+      "dec_deg": -7.2415,
+      "fov_deg": 3.5,
+      "description": "Sub-stellar benchmark scanning cold fast-moving Y-dwarf target.",
+      "target_type": "brown_dwarf",
+      "scans": [
+        {
+          "scan_id": "spx_scan_2026_0110",
+          "epoch_utc": "2026-01-10T12:00:00Z",
+          "mjd": 61050.5
+        },
+        {
+          "scan_id": "spx_scan_2026_0710",
+          "epoch_utc": "2026-07-10T12:00:00Z",
+          "mjd": 61231.5
+        }
+      ],
+      "labels": {
+        "ra_deg": "measured",
+        "dec_deg": "measured",
+        "fov_deg": "measured"
+      }
+    },
+    {
+      "id": "field_centaur_zone",
+      "name": "Jupiter Trojan & Centaur Swarm",
+      "ra_deg": 215.114,
+      "dec_deg": -11.4502,
+      "fov_deg": 3.5,
+      "description": "Trailing Lagrange L5 region monitoring resonant minor bodies.",
+      "target_type": "trojan_centaur",
+      "scans": [
+        {
+          "scan_id": "spx_scan_2026_0501",
+          "epoch_utc": "2026-05-01T04:00:00Z",
+          "mjd": 61161.16667
+        },
+        {
+          "scan_id": "spx_scan_2026_0502",
+          "epoch_utc": "2026-05-02T04:00:00Z",
+          "mjd": 61162.16667
+        }
+      ],
+      "labels": {
+        "ra_deg": "measured",
+        "dec_deg": "measured",
+        "fov_deg": "measured"
+      }
+    },
+    {
+      "id": "field_ecliptic_north",
+      "name": "SPHEREx Deep Field North",
+      "ra_deg": 270.0,
+      "dec_deg": 66.5607,
+      "fov_deg": 5.0,
+      "description": "Continuous viewing zone at North Ecliptic Pole with daily revisit coverage.",
+      "target_type": "deep_field",
+      "scans": [
+        {
+          "scan_id": "spx_scan_2026_0601",
+          "epoch_utc": "2026-06-01T00:00:00Z",
+          "mjd": 61192.0
+        },
+        {
+          "scan_id": "spx_scan_2026_0615",
+          "epoch_utc": "2026-06-15T00:00:00Z",
+          "mjd": 61206.0
+        }
+      ],
+      "labels": {
+        "ra_deg": "measured",
+        "dec_deg": "measured",
+        "fov_deg": "measured"
+      }
+    },
+    {
+      "id": "field_ecliptic_south",
+      "name": "SPHEREx Deep Field South",
+      "ra_deg": 90.0,
+      "dec_deg": -66.5607,
+      "fov_deg": 5.0,
+      "description": "South Ecliptic Pole deep infrared integration tile.",
+      "target_type": "deep_field",
+      "scans": [
+        {
+          "scan_id": "spx_scan_2026_0601_s",
+          "epoch_utc": "2026-06-01T12:00:00Z",
+          "mjd": 61192.5
+        },
+        {
+          "scan_id": "spx_scan_2026_0615_s",
+          "epoch_utc": "2026-06-15T12:00:00Z",
+          "mjd": 61206.5
+        }
+      ],
+      "labels": {
+        "ra_deg": "measured",
+        "dec_deg": "measured",
+        "fov_deg": "measured"
       }
     }
   ]

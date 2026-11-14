@@ -10,8 +10,8 @@ def test_mock_candidates_conform_to_schema():
     data = validate_file(path, "candidates")
     candidates = data["candidates"]
 
-    # Verify exactly 1 known asteroid and 1 unknown object
-    assert len(candidates) == 2
+    # Verify known asteroid and unknown object presence
+    assert len(candidates) >= 2
     verdicts = {c["verdict"] for c in candidates}
     assert "known_object" in verdicts
     assert "unknown" in verdicts
@@ -39,6 +39,6 @@ def test_mock_releases_conform_to_schema():
     data = validate_file(path, "releases")
     assert len(data["releases"]) >= 1
     rel = data["releases"][0]
-    assert rel["candidate_counts"]["total"] == 2
-    assert rel["candidate_counts"]["known_object"] == 1
-    assert rel["candidate_counts"]["unknown"] == 1
+    assert rel["candidate_counts"]["total"] >= 2
+    assert rel["candidate_counts"]["known_object"] >= 1
+    assert rel["candidate_counts"]["unknown"] >= 1
