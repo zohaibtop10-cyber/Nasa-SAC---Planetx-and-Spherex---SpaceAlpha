@@ -11,6 +11,7 @@ import { ModelGallery } from './ui/components/ModelGallery';
 import { ObjectPage } from './ui/components/ObjectPage';
 import { ObjectPanel } from './ui/components/ObjectPanel';
 import { ObjectSidePanel } from './ui/components/ObjectSidePanel';
+import { OmniSearch } from './ui/components/OmniSearch';
 import { SkyBlinkViewer } from './ui/components/SkyBlinkViewer';
 import { TimeBar } from './ui/components/TimeBar';
 import { ValidationPage } from './ui/components/ValidationPage';
@@ -271,6 +272,26 @@ export const App: React.FC = () => {
 
             {/* Canvas fills the rest */}
             <div style={{ flex: 1, position: 'relative', height: '100%', overflow: 'hidden' }}>
+              {/* Modern Floating OmniSearch Bar */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 16,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  zIndex: 25,
+                  width: '90%',
+                  maxWidth: '560px',
+                }}
+              >
+                <OmniSearch
+                  onObjectExplored={(newCand) => {
+                    setCandidates((prev) => [newCand, ...prev.filter((c) => c.id !== newCand.id)]);
+                    setSelectedCandidateId(newCand.id);
+                  }}
+                />
+              </div>
+
               <SolarSystemScene
                 candidates={candidates}
                 selectedCandidateId={selectedCandidateId}

@@ -225,6 +225,41 @@ async function runComponentTests() {
   assert.ok(mockBentoPayload.images.length > 0, 'Masonry gallery must have image assets');
   assert.ok(mockBentoPayload.summary.length > 10, 'Summary text must be present');
 
+  // 8. Verify OmniSearch workspace store integration (Zustand & exploreResultToCandidate)
+  console.log('  8. Verifying OmniSearch & WorkspaceStore state contracts...');
+  const { useWorkspaceStore, exploreResultToCandidate } = await import('../../data/workspaceStore');
+
+  const mockExploreResult = {
+    name: '1 Ceres',
+    classification: 'asteroid' as const,
+    coordinates: { distance_au: 2.77, ra: 164.21, dec: 30.31 },
+    procedural3D: { baseColorHex: '#A39D95', surfaceTexture: 'rocky' as const, relativeSize: 0.9 },
+    educationalData: {
+      summary: 'Ceres is the largest object in the asteroid belt.',
+      notableFacts: ['Discovered in 1801 by Giuseppe Piazzi'],
+      mediaUrls: ['https://upload.wikimedia.org/wikipedia/commons/7/76/Ceres.jpg'],
+    },
+  };
+
+  const candidateFromExplore = exploreResultToCandidate(mockExploreResult);
+  assert.ok(candidateFromExplore.id.startsWith('EXP-'));
+  assert.strictEqual(candidateFromExplore.verdict, 'known_object');
+  assert.strictEqual(candidateFromExplore.labels?.confidence, 'derived');
+  assert.strictEqual(candidateFromExplore.labels?.colour_index, 'measured');
+  assert.strictEqual(candidateFromExplore.positions[0].ra, 164.21);
+  assert.strictEqual(candidateFromExplore.positions[0].dec, 30.31);
+  assert.strictEqual((candidateFromExplore as any).renderState.baseColor, '#A39D95');
+
+  const store = useWorkspaceStore.getState();
+  store.setSearching(true, 'Analyzing NASA data...');
+  assert.strictEqual(useWorkspaceStore.getState().isSearching, true);
+  assert.strictEqual(useWorkspaceStore.getState().searchStatusMessage, 'Analyzing NASA data...');
+
+  store.addExploredObject(mockExploreResult);
+  assert.strictEqual(useWorkspaceStore.getState().isSearching, false);
+  assert.strictEqual(useWorkspaceStore.getState().exploredObjects.length, 1);
+  assert.strictEqual(useWorkspaceStore.getState().activeExploredObject?.name, '1 Ceres');
+
   console.log('All UI component tests passed successfully!');
 }
 
