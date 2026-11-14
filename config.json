@@ -1,0 +1,25 @@
+{
+  "detect": {
+    "sigma": 5.0
+  },
+  "link": {
+    "max_rate_arcsec_per_day": 1500.0,
+    "min_detections": 2
+  },
+  "known": {
+    "tolerance_arcsec": 5.0
+  },
+  "stars": {
+    "tolerance_arcsec": 3.0
+  },
+  "parallax": {
+    "d_min_au": 5.0,
+    "d_max_au": 1000.0,
+    "d_step": 1.0
+  },
+  "labels": [
+    "measured",
+    "derived",
+    "assumed"
+  ]
+}

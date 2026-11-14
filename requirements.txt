@@ -1,0 +1,42 @@
+# Core astronomy and scientific processing
+astropy==8.0.2
+astropy-iers-data==0.2026.11.9.0.35.9
+astroquery==0.4.11
+photutils==3.1.1
+numpy==2.5.4
+scipy==1.18.1
+pyerfa==2.0.1.5
+pyvo==1.10.0
+
+# Schema validation and test harness
+jsonschema==4.26.0
+jsonschema-specifications==2025.9.1
+referencing==0.37.0
+rpds-py==2026.9.1
+pytest==9.2.0
+pluggy==1.7.0
+iniconfig==2.3.1
+
+# HTTP and parsing utilities
+requests==2.34.2
+urllib3==2.8.0
+certifi==2026.10.23
+charset-normalizer==3.5.2
+idna==3.20
+beautifulsoup4==4.15.0
+soupsieve==4.1
+html5lib==1.1
+webencodings==0.6.1
+keyring==25.7.0
+pywin32-ctypes==0.2.3
+PyYAML==6.0.3
+attrs==26.1.0
+colorama==0.4.6
+jaraco.classes==3.4.0
+jaraco.context==6.1.2
+jaraco.functools==4.6.0
+more-itertools==11.2.1
+packaging==26.3
+Pygments==2.21.0
+six==1.17.0
+typing_extensions==4.16.0
