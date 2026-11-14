@@ -85,3 +85,58 @@ def test_s2_known_asteroids_and_instant_cache():
     assert 0.0 <= first.predicted_ra_deg <= 360.0
     assert -90.0 <= first.predicted_dec_deg <= 90.0
 
+
+def test_propagate_stellar_motion():
+    """Verify stellar proper motion propagation arithmetic."""
+    from pipeline.spikes.s3_gaia import propagate_stellar_motion
+
+    # 10 years of +3600 mas/yr (3.6 arcsec/yr) in Dec should move exactly 36.0 arcsec (0.01 deg)
+    ra_prop, dec_prop = propagate_stellar_motion(
+        ra_deg=100.0,
+        dec_deg=0.0,
+        pmra_cosdec_mas_yr=0.0,
+        pmdec_mas_yr=3600.0,
+        epoch_from_year=2016.0,
+        epoch_to_year=2026.0,
+    )
+    assert abs(ra_prop - 100.0) < 1e-6
+    expected_dec = 36.0 / 3600.0  # 0.01 deg
+    assert abs(dec_prop - expected_dec) < 1e-6
+
+
+def test_s3_gaia_fast_star_matching_and_cache():
+    """Verify Spike S3 returns a match for Barnard's Star and flags it as a fast mover."""
+    import time
+    from pipeline.spikes.s3_gaia import match_gaia_star, propagate_stellar_motion, GaiaStarMatch
+
+    obs_time = "2026-04-10 00:00:00"
+    obs_year = 2026.271047
+
+    det_ra, det_dec = propagate_stellar_motion(
+        ra_deg=269.4485025,
+        dec_deg=4.7394201,
+        pmra_cosdec_mas_yr=-801.551,
+        pmdec_mas_yr=10362.394,
+        epoch_from_year=2016.0,
+        epoch_to_year=obs_year,
+    )
+
+    t0 = time.perf_counter()
+    match, meta = match_gaia_star(
+        ra_deg=det_ra,
+        dec_deg=det_dec,
+        obs_time=obs_time,
+        search_radius_arcsec=15.0,
+    )
+    elapsed_ms = (time.perf_counter() - t0) * 1000.0
+
+    assert match is not None, "Barnard's Star must be matched"
+    assert isinstance(match, GaiaStarMatch)
+    assert match.source_id == "4472832130942575872"
+    assert match.separation_arcsec < 0.1, f"Separation should be ~0, got {match.separation_arcsec}"
+    assert match.is_fast_mover is True, "Must be flagged as high proper motion star"
+    assert match.total_pm_mas_yr > 10000.0, "Proper motion must be > 10,000 mas/yr"
+    assert meta["source"] == "disk_cache", "Should load from disk cache"
+    assert elapsed_ms < 50.0, f"Cached execution took {elapsed_ms:.2f} ms (must be < 50ms)"
+
+
