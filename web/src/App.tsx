@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { loadCandidates, loadFields } from './data';
 import { Candidate, Field } from './data/types';
 import { SolarSystemScene } from './scene/SolarSystemScene';
+import { DistanceRangeBar } from './ui/components/DistanceRangeBar';
 import { FeedPanel } from './ui/components/FeedPanel';
 import { Header } from './ui/components/Header';
 import { ModelGallery } from './ui/components/ModelGallery';
@@ -18,6 +19,7 @@ export const App: React.FC = () => {
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'3d' | 'blink' | 'validation' | 'gallery'>('3d');
   const [timeEpochRatio, setTimeEpochRatio] = useState<number>(0.0);
+  const [currentScanIndex, setCurrentScanIndex] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -185,7 +187,11 @@ export const App: React.FC = () => {
             <FeedPanel
               candidates={candidates}
               selectedCandidateId={selectedCandidateId}
-              onSelectCandidate={(id) => setSelectedCandidateId(id)}
+              onSelectCandidate={(id) => {
+                setSelectedCandidateId(id);
+                setCurrentScanIndex(0);
+                setTimeEpochRatio(0.0);
+              }}
               onOpenObjectPage={(id) => {
                 setSelectedCandidateId(id);
                 window.location.hash = `#/object/${id}`;
@@ -197,7 +203,11 @@ export const App: React.FC = () => {
               <SolarSystemScene
                 candidates={candidates}
                 selectedCandidateId={selectedCandidateId}
-                onSelectCandidate={(id) => setSelectedCandidateId(id)}
+                onSelectCandidate={(id) => {
+                  setSelectedCandidateId(id);
+                  setCurrentScanIndex(0);
+                  setTimeEpochRatio(0.0);
+                }}
                 timeEpochRatio={timeEpochRatio}
               />
 
@@ -207,11 +217,29 @@ export const App: React.FC = () => {
                 onClose={() => setSelectedCandidateId(null)}
               />
 
-              {/* Bottom Parallax Time Scrubber Bar */}
-              <TimeBar
-                timeEpochRatio={timeEpochRatio}
-                onChangeTimeRatio={setTimeEpochRatio}
-              />
+              {/* Distance Range UI for Unknown Objects OR Time Bar for Known Objects */}
+              {selectedCandidate?.distance_range ? (
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 40 }}>
+                  <DistanceRangeBar
+                    candidate={selectedCandidate}
+                    currentScanIndex={currentScanIndex}
+                    onScanIndexChange={(idx) => {
+                      setCurrentScanIndex(idx);
+                      const total = Math.max(2, selectedCandidate.positions?.length || 2);
+                      setTimeEpochRatio(idx / (total - 1));
+                    }}
+                    onReset={() => {
+                      setCurrentScanIndex(0);
+                      setTimeEpochRatio(0.0);
+                    }}
+                  />
+                </div>
+              ) : (
+                <TimeBar
+                  timeEpochRatio={timeEpochRatio}
+                  onChangeTimeRatio={setTimeEpochRatio}
+                />
+              )}
             </div>
           </div>
         )}

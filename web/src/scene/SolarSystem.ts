@@ -422,11 +422,21 @@ export class SolarSystem {
 
       let nominalDistanceAu = 2.77;
       if (cand.distance_range) {
-        const baseMin = cand.distance_range.min_au;
-        const baseMax = cand.distance_range.max_au;
-        const shrinkage = 0.45 * this.timeEpochRatio;
-        const currentMin = baseMin + (baseMax - baseMin) * (shrinkage / 2);
-        const currentMax = baseMax - (baseMax - baseMin) * (shrinkage / 2);
+        let currentMin: number;
+        let currentMax: number;
+
+        if (cand.distance_range.scan_ranges && cand.distance_range.scan_ranges.length > 0) {
+          const steps = cand.distance_range.scan_ranges;
+          const sIdx = Math.min(steps.length - 1, Math.floor(this.timeEpochRatio * (steps.length - 0.001)));
+          currentMin = steps[sIdx].min_au;
+          currentMax = steps[sIdx].max_au;
+        } else {
+          const baseMin = cand.distance_range.min_au;
+          const baseMax = cand.distance_range.max_au;
+          const shrinkage = 0.45 * this.timeEpochRatio;
+          currentMin = baseMin + (baseMax - baseMin) * (shrinkage / 2);
+          currentMax = baseMax - (baseMax - baseMin) * (shrinkage / 2);
+        }
         nominalDistanceAu = (currentMin + currentMax) / 2.0;
 
         // Line-of-sight distance uncertainty segment

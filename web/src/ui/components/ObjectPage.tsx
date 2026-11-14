@@ -9,12 +9,13 @@
  * - Full keyboard navigability (Escape to return, Tab navigation)
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { labelFor } from '../../data/labels';
 import { Candidate } from '../../data/types';
 import { AsteroidModel, UnknownSegmentModel } from '../../scene/models';
+import { DistanceRangeBar } from './DistanceRangeBar';
 import { NumberChip } from './NumberChip';
 
 interface ObjectPageProps {
@@ -30,6 +31,9 @@ export const ObjectPage: React.FC<ObjectPageProps> = ({
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
   const tagContainerRef = useRef<HTMLDivElement>(null);
+  const activeModelRef = useRef<AsteroidModel | UnknownSegmentModel | null>(null);
+
+  const [scanIndex, setScanIndex] = useState<number>(0);
 
   const candidate = candidates.find((c) => c.id === candidateId) || null;
 
@@ -139,6 +143,7 @@ export const ObjectPage: React.FC<ObjectPageProps> = ({
       activeModel.group.position.set(0, 1.8, 0);
     }
 
+    activeModelRef.current = activeModel;
     scene.add(activeModel.group);
 
     // Mount HTML Tag to overlay
@@ -179,11 +184,31 @@ export const ObjectPage: React.FC<ObjectPageProps> = ({
       controls.dispose();
       renderer.dispose();
       activeModel.dispose();
+      activeModelRef.current = null;
       if (renderer.domElement && container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
       }
     };
   }, [candidate]);
+
+  // Synchronize 3D model distance uncertainty segment with scanIndex stepping
+  useEffect(() => {
+    if (!candidate?.distance_range || !activeModelRef.current) return;
+    if (activeModelRef.current instanceof UnknownSegmentModel) {
+      const ranges = candidate.distance_range.scan_ranges;
+      if (ranges && ranges[scanIndex]) {
+        activeModelRef.current.setDistanceRange(ranges[scanIndex].min_au, ranges[scanIndex].max_au);
+      } else {
+        const total = Math.max(2, candidate.positions.length);
+        const progress = scanIndex / (total - 1);
+        const baseMin = candidate.distance_range.min_au;
+        const baseMax = candidate.distance_range.max_au;
+        const currentMin = (baseMin * 0.65) + (baseMin * 0.35 * progress);
+        const currentMax = (baseMax * 1.45) - (baseMax * 0.45 * progress);
+        activeModelRef.current.setDistanceRange(currentMin, currentMax);
+      }
+    }
+  }, [candidate, scanIndex]);
 
   if (!candidate) {
     return (
@@ -269,62 +294,78 @@ export const ObjectPage: React.FC<ObjectPageProps> = ({
       }}
     >
       {/* 3D Pedestal Canvas Area */}
-      <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
-        <div ref={mountRef} style={{ width: '100%', height: '100%' }} />
+      <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+          <div ref={mountRef} style={{ width: '100%', height: '100%' }} />
 
-        {/* Floating Back Navigation & HTML Tag Overlay */}
-        <div
-          style={{
-            position: 'absolute',
-            top: 20,
-            left: 20,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 10,
-            zIndex: 10,
-          }}
-        >
-          <button
-            onClick={onBack}
+          {/* Floating Back Navigation & HTML Tag Overlay */}
+          <div
             style={{
-              fontFamily: 'monospace',
-              fontSize: '11px',
-              backgroundColor: 'rgba(17, 17, 19, 0.92)',
-              border: '1px solid var(--color-hairline)',
-              color: 'var(--color-text-1)',
-              padding: '6px 12px',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              width: 'fit-content',
+              position: 'absolute',
+              top: 20,
+              left: 20,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 10,
+              zIndex: 10,
             }}
           >
-            ← Back to Survey Feed <span style={{ color: '#71717A' }}>[Esc]</span>
-          </button>
+            <button
+              onClick={onBack}
+              style={{
+                fontFamily: 'monospace',
+                fontSize: '11px',
+                backgroundColor: 'rgba(17, 17, 19, 0.92)',
+                border: '1px solid var(--color-hairline)',
+                color: 'var(--color-text-1)',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                width: 'fit-content',
+              }}
+            >
+              ← Back to Survey Feed <span style={{ color: '#71717A' }}>[Esc]</span>
+            </button>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: '11px', color: '#71717A' }}>3D Representation:</span>
-            <div ref={tagContainerRef} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: '11px', color: '#71717A' }}>3D Representation:</span>
+              <div ref={tagContainerRef} />
+            </div>
+          </div>
+
+          {/* Pedestal Inspection Hint */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 16,
+              left: 20,
+              fontSize: '11px',
+              color: '#71717A',
+              backgroundColor: 'rgba(17, 17, 19, 0.85)',
+              padding: '4px 10px',
+              border: '1px solid var(--color-hairline)',
+              pointerEvents: 'none',
+              zIndex: 10,
+            }}
+          >
+            Pedestal View · Drag to rotate 360° · Scroll to inspect geometry
           </div>
         </div>
 
-        {/* Pedestal Inspection Hint */}
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 20,
-            left: 20,
-            fontSize: '11px',
-            color: '#71717A',
-            backgroundColor: 'rgba(17, 17, 19, 0.85)',
-            padding: '4px 10px',
-            border: '1px solid var(--color-hairline)',
-          }}
-        >
-          Pedestal View · Drag to rotate 360° · Scroll to inspect geometry
-        </div>
+        {/* Distance Range UI & Time Bar for Unknown Objects */}
+        {candidate.distance_range && (
+          <div style={{ borderTop: '1px solid var(--color-hairline)', zIndex: 20 }}>
+            <DistanceRangeBar
+              candidate={candidate}
+              currentScanIndex={scanIndex}
+              onScanIndexChange={setScanIndex}
+              onReset={() => setScanIndex(0)}
+            />
+          </div>
+        )}
       </div>
 
       {/* Sidebar Object Details Panel (440px) */}

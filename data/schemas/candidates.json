@@ -73,7 +73,20 @@
             "properties": {
               "min_au": { "type": "number", "exclusiveMinimum": 0.0 },
               "max_au": { "type": "number", "exclusiveMinimum": 0.0 },
-              "assumption": { "type": "string", "minLength": 1 }
+              "assumption": { "type": "string", "minLength": 1 },
+              "scan_ranges": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["scan_index", "min_au", "max_au"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "scan_index": { "type": "integer" },
+                    "min_au": { "type": "number", "exclusiveMinimum": 0.0 },
+                    "max_au": { "type": "number", "exclusiveMinimum": 0.0 }
+                  }
+                }
+              }
             }
           },
           "colour_index": {

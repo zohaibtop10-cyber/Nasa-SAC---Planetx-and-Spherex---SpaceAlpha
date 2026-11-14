@@ -21,10 +21,17 @@ export interface MatchDetails {
   [key: string]: unknown;
 }
 
+export interface ScanRangeStep {
+  scan_index: number;
+  min_au: number;
+  max_au: number;
+}
+
 export interface DistanceRange {
   min_au: number;
   max_au: number;
   assumption: string;
+  scan_ranges?: ScanRangeStep[];
 }
 
 export interface Candidate {

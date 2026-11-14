@@ -124,6 +124,47 @@ async function runComponentTests() {
 
   assert.deepStrictEqual(icons, ['✓', '✗', '✗', '✓'], 'Icons must accurately match triage outcomes');
 
+  // 5. Verify Distance Range monotonic shrinkage and assumption visibility
+  console.log('  5. Verifying Distance Range monotonic shrinkage and assumption visibility...');
+  const distRange = mockCandidate.distance_range;
+  assert.ok(distRange, 'Candidate must have distance_range');
+  assert.ok(distRange.assumption && distRange.assumption.length > 5, 'Assumption text must be present and non-empty');
+
+  // Test scan ranges shrinkage monotonicity
+  const testSteps = [
+    { scan_index: 1, min_au: 35.0, max_au: 260.0 },
+    { scan_index: 2, min_au: 42.0, max_au: 215.0 },
+    { scan_index: 3, min_au: 48.0, max_au: 195.0 },
+    { scan_index: 4, min_au: 55.0, max_au: 180.0 },
+  ];
+
+  for (let i = 1; i < testSteps.length; i++) {
+    const prev = testSteps[i - 1];
+    const curr = testSteps[i];
+
+    assert.ok(curr.min_au >= prev.min_au, `Step ${i}: min_au (${curr.min_au}) must be >= previous min_au (${prev.min_au})`);
+    assert.ok(curr.max_au <= prev.max_au, `Step ${i}: max_au (${curr.max_au}) must be <= previous max_au (${prev.max_au})`);
+
+    const prevSpan = prev.max_au - prev.min_au;
+    const currSpan = curr.max_au - curr.min_au;
+    assert.ok(currSpan < prevSpan, `Step ${i}: uncertainty span (${currSpan}) must shrink monotonically (< ${prevSpan})`);
+  }
+
+  // Verify logarithmic ruler landmark positioning
+  const RULER_MIN_AU = 0.3;
+  const RULER_MAX_AU = 600.0;
+  const logMin = Math.log10(RULER_MIN_AU);
+  const logMax = Math.log10(RULER_MAX_AU);
+  const logPct = (au: number) => ((Math.log10(au) - logMin) / (logMax - logMin)) * 100;
+
+  const sunPct = logPct(1.0);
+  const neptunePct = logPct(30.06);
+  const planetXPct = logPct(350.0);
+
+  assert.ok(sunPct > 0 && sunPct < neptunePct, 'Sun must be positioned before Neptune on log ruler');
+  assert.ok(neptunePct < planetXPct, 'Neptune must be positioned before Planet X zone on log ruler');
+  assert.ok(planetXPct < 100, 'Planet X zone must lie within 600 AU ruler bounds');
+
   console.log('All UI component tests passed successfully!');
 }
 

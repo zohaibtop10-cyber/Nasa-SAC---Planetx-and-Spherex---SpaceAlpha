@@ -184,6 +184,18 @@
           "err": 0.08
         },
         {
+          "time": "2026-05-15T08:00:00Z",
+          "ra": 133.8248,
+          "dec": -7.2118,
+          "err": 0.08
+        },
+        {
+          "time": "2026-07-15T08:00:00Z",
+          "ra": 133.8288,
+          "dec": -7.2132,
+          "err": 0.09
+        },
+        {
           "time": "2026-09-15T08:00:00Z",
           "ra": 133.8329,
           "dec": -7.2148,
@@ -192,19 +204,41 @@
       ],
       "verdict": "unknown",
       "reason_chain": [
-        "Uncataloged infrared mover detected at 7.1 sigma across 2 observation epochs",
+        "Uncataloged infrared mover detected at 7.1 sigma across 4 observation epochs",
         "Cross-matched against JPL Small-Body Ident (5.0 arcsec radius): no known solar system object",
         "Cross-matched against Gaia DR3 (3.0 arcsec radius): no stellar counterpart",
         "Apparent angular shift of 44.2 arcsec observed over 184-day SPHEREx survey cadence",
         "Parallax grid search yields distance bounds 55.0 to 180.0 AU assuming Earth-SPHEREx 2.0 AU orbital baseline",
-        "Triage verdict: unknown outer candidate pending epoch 3 confirmation (no claim of Planet X)"
+        "Triage verdict: unknown outer candidate pending epoch 5 confirmation (no claim of Planet X)"
       ],
       "confidence": 0.82,
       "match": null,
       "distance_range": {
         "min_au": 55.0,
         "max_au": 180.0,
-        "assumption": "Calculated from 6-month Earth-SPHEREx 2.0 AU orbital baseline parallax reflex motion assuming bound Keplerian orbit"
+        "assumption": "Calculated from 6-month Earth-SPHEREx 2.0 AU orbital baseline parallax reflex motion assuming bound Keplerian orbit",
+        "scan_ranges": [
+          {
+            "scan_index": 1,
+            "min_au": 35.0,
+            "max_au": 260.0
+          },
+          {
+            "scan_index": 2,
+            "min_au": 42.0,
+            "max_au": 215.0
+          },
+          {
+            "scan_index": 3,
+            "min_au": 48.0,
+            "max_au": 195.0
+          },
+          {
+            "scan_index": 4,
+            "min_au": 55.0,
+            "max_au": 180.0
+          }
+        ]
       },
       "colour_index": 1.85,
       "simulated": true,
