@@ -1,0 +1,79 @@
+{
+  "version": "1.0.0",
+  "mission": "NASA SPHEREx Multi-Epoch Survey",
+  "targets": [
+    {
+      "id": "3I_ATLAS",
+      "name": "Comet 3I/ATLAS",
+      "ra": 280.1160,
+      "dec": -19.7913,
+      "type": "comet",
+      "description": "Incoming hyperbolic solar system small-body candidate",
+      "priority": 1
+    },
+    {
+      "id": "BARNARDS_STAR",
+      "name": "Barnard's Star",
+      "ra": 269.4521,
+      "dec": 4.6934,
+      "type": "star",
+      "description": "High proper motion red dwarf calibration benchmark (mu = 10,393 mas/yr)",
+      "priority": 1
+    },
+    {
+      "id": "CERES",
+      "name": "1 Ceres",
+      "ra": 164.2100,
+      "dec": 30.3100,
+      "type": "asteroid",
+      "description": "Dwarf planet and primary asteroid belt cross-match benchmark",
+      "priority": 2
+    },
+    {
+      "id": "WISE0855",
+      "name": "WISE 0855",
+      "ra": 133.8562,
+      "dec": -7.2415,
+      "type": "brown_dwarf",
+      "description": "Sub-stellar Y-type cold brown dwarf (T ~ 250 K)",
+      "priority": 2
+    },
+    {
+      "id": "EPS_INDI_B",
+      "name": "Epsilon Indi B",
+      "ra": 330.8404,
+      "dec": -56.7861,
+      "type": "brown_dwarf",
+      "description": "Nearby sub-stellar binary brown dwarf system",
+      "priority": 3
+    }
+  ],
+  "discovery_zones": [
+    {
+      "id": "ZONE_ASTEROID_BELT",
+      "name": "Asteroid Belt Discovery Zone",
+      "center_ra": 164.2500,
+      "center_dec": 30.2500,
+      "ra_min": 163.5000,
+      "ra_max": 165.0000,
+      "dec_min": 29.5000,
+      "dec_max": 31.0000,
+      "fov_size_deg": 0.5,
+      "description": "Ecliptic survey box for high-cadence small body identification",
+      "priority": 1
+    },
+    {
+      "id": "ZONE_OUTER_ECLIPTIC",
+      "name": "Outer Solar System Ecliptic Zone",
+      "center_ra": 76.9563,
+      "center_dec": 30.4014,
+      "ra_min": 76.4563,
+      "ra_max": 77.4563,
+      "dec_min": 29.9014,
+      "dec_max": 30.9014,
+      "fov_size_deg": 0.5,
+      "description": "Taurus / Auriga high-latitude ecliptic background test region",
+      "priority": 2
+    }
+  ]
+}

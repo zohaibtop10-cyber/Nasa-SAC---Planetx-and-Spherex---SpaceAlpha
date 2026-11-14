@@ -1,0 +1,39 @@
+{
+  "version": "1.0.0",
+  "execution_id": "INGEST-1794682328",
+  "started_at": "2026-11-14T18:52:08.537696+00:00",
+  "completed_at": "2026-11-14T18:54:12.389708+00:00",
+  "elapsed_seconds": 123.85,
+  "status": "success",
+  "epistemic_labels": {
+    "elapsed_seconds": "measured",
+    "cutouts_count": "measured",
+    "identified_count": "derived",
+    "state_vectors_count": "derived",
+    "orbital_coordinates": "derived"
+  },
+  "rule2_compliance": "All 3D models and state vectors tagged 'Illustrative'",
+  "summary": {
+    "cutouts_ingested": 1,
+    "objects_identified": 0,
+    "state_vectors_calculated": 0
+  },
+  "ingested_cutouts": [
+    {
+      "target_id": "CERES",
+      "name": "1 Ceres",
+      "ra": 164.21,
+      "dec": 30.31,
+      "cutout": {
+        "file_path": "E:\\Data\\Nasa SAC PlanetX - SpaceAlpha\\data\\raw\\fits\\spherex_CERES_164.2100_30.3100.fits",
+        "freshness": "fresh",
+        "bytes": 3997440,
+        "access_url": "https://irsa.ipac.caltech.edu/ibe/data/spherex/qr3/level2/2026W21_1A/l2b-v27-2026-268/4/level2_2026W21_1A_0405_1D4_spx_l2b-v27-2026-268.fits?center=164.2100,30.3100&size=0.1",
+        "status": "success",
+        "target_id": "CERES"
+      }
+    }
+  ],
+  "identified_objects": [],
+  "orbital_vectors": []
+}
